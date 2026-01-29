@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?xml-stylesheet href="https://moise-lang.github.io/xml/os.xsl" type="text/xsl"?>
+
+<organisational-specification
+    id="learning_environ"
+    os-version="1.1"
+    xmlns='http://moise.sourceforge.net/os'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xsi:schemaLocation='hhttp://moise.sourceforge.net/os https://moise-lang.github.io/xml/os.xsd'>
+
+    <structural-specification>
+
+        <role-definitions>
+            <role id="adult" />
+            <role id="child" />
+            <role id="offspring" />
+            <role id="parent" />
+            <role id="student"/>
+            <role id="teacher" />
+        </role-definitions>
+
+        <group-specification id="learning_environment">
+            <subgroups>
+                <group-specification id="classroom">
+                    <roles>
+                        <role id="teacher" min="1" max="1" />
+                        <role id="student" min="1" />
+                    </roles>
+
+                    <links>
+                        <link from="teacher" to="student" type="authority" scope="intra-group"
+                            bi-dir="false" />
+                        <link from="teacher" to="student" type="communication" scope="intra-group"
+                            bi-dir="true" />
+                    </links>
+                </group-specification>
+                <group-specification id="village">
+                    <roles>
+                        <role id="adult" min="1" />
+                        <role id="child" min="1" />
+                    </roles>
+                    <!-- <links>
+                        <link from="parent" to="offspring" type="authority" scope="intra-group"
+                            extends-subgroups="true" bi-dir="false" />
+                        <link from="parent" to="offspring" type="communication" scope="intra-group"
+                            extends-subgroups="true" bi-dir="true" />
+                    </links> -->
+                    <subgroups>
+                        <group-specification id="indv_home" min="1">
+                            <roles>
+                                <role id="parent" min="1" max="2" />
+                                <role id="offspring" min="1" max="1" />
+                            </roles>
+                        </group-specification>
+                    </subgroups>
+                </group-specification>
+            </subgroups>
+            <formation-constraints>
+                <compatibility from="offspring" to="student" bi-dir="true" />
+            </formation-constraints>
+        </group-specification>
+    </structural-specification>
+
+    <functional-specification>
+        <scheme id="classroom_reading_books">
+            <goal id="tell_class_to_read_a_book"
+                ds="All students instructed to read a specific book">
+                <plan operator="sequence">
+                    <goal id="find_my_students" />
+                    <goal id="tell_students_to_read_book" />
+                </plan>
+            </goal>
+
+            <mission id="tellStudentsToRead" min="1">
+                <goal id="find_my_students" />
+                <goal id="tell_students_to_read_book" />
+            </mission>
+        </scheme>
+        <scheme id="speak_to_child">
+            <goal id="speak_an_utterance_to_child" ds="Parent speaking an utterance to their child">
+                <plan operator="sequence">
+                    <goal id="speak_utterance" />
+                </plan>
+            </goal>
+            <mission id="speakUtterances" min="1">
+                <goal id="speak_utterance" />
+            </mission>
+        </scheme>
+    </functional-specification>
+
+    <normative-specification>
+        <!-- the norms of the application -->
+        <norm id="parentNorm" type="obligation" role="parent" mission="speakUtterances" />
+        <!-- <norm id="studentNorm" type="obligation" role="student" mission="readBooks" /> -->
+        <norm id="teacherNorm" type="obligation" role="teacher" mission="tellStudentsToRead" />
+    </normative-specification>
+
+</organisational-specification>
