@@ -1,7 +1,0 @@
-[agents]
-child = 3
-percent_single_parents = 0.0
-
-[environment]
-locations.utterances = "./src/resources/Utterances"
-locations.books = "./src/resources/Books"

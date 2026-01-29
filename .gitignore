@@ -11,6 +11,10 @@ src/resources/
 # DS_Store files are relevant only to the Mac they were created on, and shouldn't be stored in the repo.
 .DS_Store
 
-# Extra folders to ignore.
-.gradle/ # Cached files used by Gradle
-.vscode/ # Contents are only relevent to the specific machine which created them 
+# Extra file & folders to ignore...
+# Cached files used by Gradle
+.gradle/
+# Contents are only relevent to the specific machine which created them
+.vscode/
+# JCM dependencies
+.jcm-deps.gradle
