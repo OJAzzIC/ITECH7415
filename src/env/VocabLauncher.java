@@ -168,7 +168,7 @@ public class VocabLauncher extends JaCaMoLauncher {
         DataLogger.initialise();
         Synchroniser.setAgentConfig(confFile.agents);
         Utterances.loadUtterances(confFile.environment.utteranceLocation());
-        Library.loadBookTitles(confFile.environment.bookLocations());
+        Library.loadBookTitles(confFile.environment.bookLocation());
     }
 
     private void addChildAgents() {

@@ -1,4 +1,4 @@
 package vocab;
 
-public record Environment(String utteranceLocation, String bookLocations) {
+public record Environment(String utteranceLocation, String bookLocation) {
 }
