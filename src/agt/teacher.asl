@@ -3,12 +3,6 @@
 // Initial Beliefs
 students_found(0).
 
-// Prolog-style rule to calculate the number of students in the simulated classroom
-num_students(Number):-
-    my_students(StudentList)&
-    .length(StudentList,Number)
-    .
-
 +!find_my_students<-
     .wait(sync::status("Ready"));
     .findall(Student,play(Student,student,_),StudentList);
