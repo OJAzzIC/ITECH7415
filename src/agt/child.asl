@@ -101,6 +101,7 @@
     !word_seen_checker(Word);
     -words_read(Title,Count);
     +words_read(Title,Count+1);
+    !try_learn_word(Word);
     // The double '!' here creates a separate goal/intention, rather than a
     // sub-goal, as some books will be quite loooooooooong and could cause a 
     // 'StackOverflowException' (or JaCaMo's equivalent if Java doesn't do it)
@@ -113,7 +114,55 @@
     .
 +!parse_speech_text([Word|Rest])<-
     !word_heard_checker(Word);
+    !try_learn_word(Word);
     !parse_speech_text(Rest);
+    .
+
+word_learned(Word) :-
+    .my_name(Me) &
+    learnt::hasLearntWord(Me,Word,Learned) &
+    Learned == true
+    .
+
+/* 5 plans here, to see if the agent can 'learn' the word or not.
+ * The 1st handles if the word has already been learnt.
+ * The 2nd handles if the word has been seen and heard a fair few times
+ * The 3rd handles if the word has been heard lots, regardless of how many times it's been seen
+ * The 4th handles if the word has been seen lots, regardless of how many times it's been heard
+ * The 5th is the 'fail-over', for when the word hasn't been seen or heard enough times yet.
+ */ 
++!try_learn_word(Word):word_learned(Word).
++!try_learn_word(Word):
+        (not word_learned(Word)) &
+        heard::word(Word,HeardCount) &
+        seen::word(Word,SeenCount) &
+        HeardCount > 12 &
+        SeenCount > 12
+    <-
+    !actually_learn_word(Word);
+    .
++!try_learn_word(Word):
+        (not word_learned(Word)) &
+        heard::word(Word,HeardCount) &
+        HeardCount > 20
+    <-
+    !actually_learn_word(Word);
+    .
++!try_learn_word(Word):
+        (not word_learned(Word)) &
+        seen::word(Word,SeenCount) &
+        SeenCount > 20
+    <-
+    !actually_learn_word(Word);
+    .
++!try_learn_word(Word)
+    .
+
++!actually_learn_word(Word)<-
+    .my_name(Me);
+    ?age(Age);
+    ?home::ses(Ses,_);
+    learnt::learnWord(Me,Ses,Age,Word);
     .
 
 // The custom launcher tells the 'parent' agents to create groups representing
@@ -159,11 +208,14 @@
 +sync::newYear<-
     .wait(activityState("Idle"));
     .my_name(Me);
+    .print("Doing end-of-year duties...");
     ?age(Age);
     ?home::ses(Ses,_);
     ?seen::unique_words(WordsSeenCount);
     ?heard::unique_words(WordsHeardCount);
-    addAnnualStats(Me,Ses,Age,WordsSeenCount,WordsHeardCount,0);
+    learnt::numWordsKnown(Me,WordsLearntCount);
+    addAnnualStats(Me,Ses,Age,WordsSeenCount,WordsHeardCount,WordsLearntCount);
+    .print("Completed end-of-year duties...");
     .
 
 // A little back-and-forth plan to get the synchroniser to wait until all child

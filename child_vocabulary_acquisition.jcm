@@ -20,6 +20,7 @@ mas child_vocabulary_acquisition {
   workspace sync{
     artifact synchroniser: vocab.Synchroniser
     artifact datalogger:vocab.DataLogger
+    artifact wordsLearnt:vocab.WordsLearnt
   }
   workspace classroom {
     artifact library: vocab.Library
@@ -41,5 +42,5 @@ mas child_vocabulary_acquisition {
   // agents, rather than run each agent within it's own thread.  This probably
   // results in slightly slower execution if the user's machine is able to
   // process more threads simultaneously, however it's a good compromise.
-  platform: local(asych_shared,16)
+  //platform: local(asych_shared,64)
 }

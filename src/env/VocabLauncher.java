@@ -197,6 +197,7 @@ public class VocabLauncher extends JaCaMoLauncher {
         agChild.addFocus("classroom.library", null);
         agChild.addFocus("sync.synchroniser", "sync");
         agChild.addFocus("sync.datalogger", "sync");
+        agChild.addFocus("sync.wordsLearnt", "learnt");
         agChild.addRole("learning_environ.village", "child");
         try {
             agChild.addInitBel(ASSyntax.parseLiteral("age(" + agents.getAgeStart() + ")"));

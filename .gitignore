@@ -6,7 +6,7 @@ build/
 src/resources/
 
 # Ignore the csv's produced with each successful run
-/[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9].csv
+/*.csv
 
 # DS_Store files are relevant only to the Mac they were created on, and shouldn't be stored in the repo.
 .DS_Store

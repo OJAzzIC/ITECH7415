@@ -184,7 +184,8 @@ public class Synchroniser extends Artifact {
             // Tell the user where the results are - this is done after shutting down JaCaMo
             // so that the user knows where they can find their results as there is a
             // quantity of output from JaCaMo as it goes down.
-            System.out.println("Results saved to: " + DataLogger.outputLocation());
+            System.out.println("Summary of results saved to: " + DataLogger.outputSummaryLocation());
+            System.out.println("Word count results saved to: " + DataLogger.outputWordsLocation());
             lock.unlock();
         }
     }
