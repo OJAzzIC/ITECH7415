@@ -73,97 +73,30 @@
     if(WordCount>0){
         // The book has some words in it, so lets 'read' it.
         !setState("Busy - Reading");
-        +reading(Title);
-        +words_read(Title,0);
-        !parse_book_text(Text);
-        // Pause until the parsing is 'finished'
-        .wait(finished(Title));
-        // Clean up by removing the 'working' beliefs, telling the teacher
-        // we're finished, then, finally, setting the 'Idle' state.
-        -finished(Title);
-        -words_read(Title,_);
+        for(.member(Word,Text)){
+            !word_seen_checker(Word);
+            !try_learn_word(Word);
+        };
         .send(Teacher,tell,finished(Title));
         !setState("Idle");
     }
     .
 
-// Two plans here:
-// 1st will execute once the last word has been processed and cleans up
-// 2nd pulls out the 1st word in the list of words, processes it, then adds a
-// new intention to process the remaining words in the list.
-+!parse_book_text([])<-
-    ?school::my_teacher(Teacher);
-    ?reading(Title);
-    -reading(Title);
-    +finished(Title);
-    .
-+!parse_book_text([Word|Rest])<-
-    !word_seen_checker(Word);
-    -words_read(Title,Count);
-    +words_read(Title,Count+1);
-    !try_learn_word(Word);
-    // The double '!' here creates a separate goal/intention, rather than a
-    // sub-goal, as some books will be quite loooooooooong and could cause a 
-    // 'StackOverflowException' (or JaCaMo's equivalent if Java doesn't do it)
-    !!parse_book_text(Rest);
-    .
-
-// The two plans here do much the same as the above two, but for words 'spoken'
-// to the agent.
-+!parse_speech_text([])
-    .
-+!parse_speech_text([Word|Rest])<-
-    !word_heard_checker(Word);
-    !try_learn_word(Word);
-    !parse_speech_text(Rest);
-    .
-
-word_learned(Word) :-
-    .my_name(Me) &
-    learnt::hasLearntWord(Me,Word,Learned) &
-    Learned == true
-    .
-
-/* 5 plans here, to see if the agent can 'learn' the word or not.
- * The 1st handles if the word has already been learnt.
- * The 2nd handles if the word has been seen and heard a fair few times
- * The 3rd handles if the word has been heard lots, regardless of how many times it's been seen
- * The 4th handles if the word has been seen lots, regardless of how many times it's been heard
- * The 5th is the 'fail-over', for when the word hasn't been seen or heard enough times yet.
- */ 
-+!try_learn_word(Word):word_learned(Word).
-+!try_learn_word(Word):
-        (not word_learned(Word)) &
-        heard::word(Word,HeardCount) &
-        seen::word(Word,SeenCount) &
-        HeardCount > 12 &
-        SeenCount > 12
-    <-
-    !actually_learn_word(Word);
-    .
-+!try_learn_word(Word):
-        (not word_learned(Word)) &
-        heard::word(Word,HeardCount) &
-        HeardCount > 20
-    <-
-    !actually_learn_word(Word);
-    .
-+!try_learn_word(Word):
-        (not word_learned(Word)) &
-        seen::word(Word,SeenCount) &
-        SeenCount > 20
-    <-
-    !actually_learn_word(Word);
-    .
-+!try_learn_word(Word)
-    .
-
-+!actually_learn_word(Word)<-
++!try_learn_word(Word)<-
     .my_name(Me);
-    ?age(Age);
-    ?home::ses(Ses,_);
-    learnt::learnWord(Me,Ses,Age,Word);
+    learnt::hasLearntWord(Me,Word,Learned);
+    if(not Learned){
+        ?heard::word(Word,HeardCount);
+        ?seen::word(Word,SeenCount);
+        if((HeardCount>12 & SeenCount>12)|(HeardCount>20)|(SeenCount>20)){
+            ?age(Age);
+            ?home::ses(Ses,_);
+            learnt::learnWord(Me,Ses,Age,Word);
+        };
+    };
     .
++?heard::word(_,_).
++?seen::word(_,_).
 
 // The custom launcher tells the 'parent' agents to create groups representing
 // homes/family units, and tells this child agent which one to join, to play
@@ -194,7 +127,10 @@ word_learned(Word) :-
 @[atomic]
 +!listen_to_speech(Utterance)[source(Parent)]<-
     !setState("Busy - Listening");
-    !parse_speech_text(Utterance);
+    for(.member(Word,Utterance)){
+        !word_heard_checker(Word);
+        !try_learn_word(Word);
+    };
     .send(Parent,tell,finishedUtterance);
     !setState("Idle");
     .
