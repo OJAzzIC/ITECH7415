@@ -77,20 +77,22 @@
     WordsToSpeak=UtteranceQty/Length;
     // Create a counter to track how many words are remaining to be 'spoken'
     +home::words_to_speak(WordsToSpeak);
-    while(home::words_to_speak(RemainingWords) & RemainingWords>0){
-        // Still have some words to speak...
-        getRandomUtterance(_,Utterance,WordCount);
-        .send(Child,achieve,listen_to_speech(Utterance));
-        // Be civilised and wait for the child to report that they've
-        // processed what this agent has just 'spoken' to it.
-        .wait(finishedUtterance[source(Child)]);
-        -finishedUtterance[source(Child)];
-        // Decrement the remaining word counter
+    +home::iterationsLeft(20);
+    while(home::iterationsLeft(Counter) & Counter>0){
+        ?home::words_to_speak(RemainingWords);
+        DesiredWords=RemainingWords/Counter;
+        getBulkUtterances(DesiredWords,Utterances,NumWordsReceived);
+        .send(Child,achieve,listen_to_speeches(Utterances,Counter));
+        .wait(finishedUtterances(Counter)[source(Child)]);
+        -finishedUtterances(_);
         -home::words_to_speak(_);
-        +home::words_to_speak(RemainingWords-WordCount);
-    }
-    // Remove the counter
+        +home::words_to_speak(RemainingWords-NumWordsReceived);
+        -home::iterationsLeft(_);
+        +home::iterationsLeft(Counter-1);
+    };
+    // Remove the counters
     -home::words_to_speak(_);
+    -home::iterationsLeft(_);
     // Tell the synchroniser that this agent has completed the task.
     sync::finishedHome;
     .

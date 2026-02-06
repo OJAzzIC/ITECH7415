@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -156,11 +157,11 @@ public class Utterances extends Artifact {
 
     // Provide a random utterance from the database.
     // Returns: speakerCode - a string representing the identifier from the data
-    //                          files of the person who made the selected utterance
-    //          utterance - an array of words representing the utterance that was
-    //                          selected
-    //          utteranceLength - an Integer indicating the total number of words in
-    //                          the utterance that was selected
+    // files of the person who made the selected utterance
+    // utterance - an array of words representing the utterance that was
+    // selected
+    // utteranceLength - an Integer indicating the total number of words in
+    // the utterance that was selected
     @OPERATION
     void getRandomUtterance(OpFeedbackParam<String> speakerCode, OpFeedbackParam<String[]> utterance,
             OpFeedbackParam<Integer> utteranceLength) {
@@ -172,5 +173,25 @@ public class Utterances extends Artifact {
         speakerCode.set(rndSpeaker);
         utterance.set(rndUtterance);
         utteranceLength.set(rndUtterance.length);
+    }
+
+    @OPERATION
+    void getBulkUtterances(double numWordsRequired, OpFeedbackParam<Object[]> utternaces,
+            OpFeedbackParam<Integer> numWordsProvided) {
+        if (numWordsRequired < 1)
+            return;
+        Random rnd = new Random();
+        ArrayList<String[]> results = new ArrayList<>();
+        int runningTally=0;
+        while (numWordsRequired > 0) {
+            Collection<ArrayList<String>> l1 = utterancesMap.values();
+            ArrayList<String>l2=(ArrayList<String>)(l1.toArray()[rnd.nextInt(l1.size())]);
+            String[]utterance=l2.get(rnd.nextInt(l2.size())).split(" ");
+            runningTally+=utterance.length;
+            numWordsRequired-=utterance.length;
+            results.add(utterance);
+        }
+        utternaces.set(results.toArray());
+        numWordsProvided.set(runningTally);
     }
 }

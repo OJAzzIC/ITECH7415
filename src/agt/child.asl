@@ -10,49 +10,41 @@
  * Initial plans *
  *****************/
 
-// When processing the words 'read', the 1st plan increments the number of
-// times a given word has been 'seen' by this child agent.
-// If the word hasn't been seen before, the 2nd plan here is triggered, which
-// adds the belief that the agent has seen the word once.
-+!word_seen_checker(Word):seen::word(Word,Count)<-
+// This trio of plans checks to see if the agent has 'heard' the word already.
++!word_heard_checker(Word)<-
+    ?heard::word(Word,Count);   // Check to see if we've already seen the word
+    -heard::word(Word,Count);   // Remove the belief that we've seen the word
+    +heard::word(Word,Count+1); // Add the belief that we've seen the word an extra time.
+    .
++?heard::word(Word,Count)<-                 // This plan handles when the word is being seen for the 1st time
+    Count=0;                                //
+    +heard::word(Word,Count);               // Add the 'base' belief, so that the above plan can complete.
+    ?heard::unique_words(UniqueCount);      // Check to see if we've got a 'unique_words' belief
+    -heard::unique_words(UniqueCount);      // Remove that
+    +heard::unique_words(UniqueCount+1);    // Add it back, with an incremented value
+    .
++?heard::unique_words(UniqueCount)<-    // This plan handles when the agent hears their 1st word
+    UniqueCount=0;
+    +heard::unique_words(UniqueCount);  // Add the 'base' belief, so that the above plans can complete.
+    .
+
+// This trio of plans does the same as the above, but for words 'seen'.
++!word_seen_checker(Word)<-
+    ?seen::word(Word,Count);
     -seen::word(Word,Count);
     +seen::word(Word,Count+1);
     .
--!word_seen_checker(Word)<-
-    +seen::word(Word,1);
-    !new_word_seen
++?seen::word(Word,Count)<-
+    Count=0;
+    +seen::word(Word,Count);
+    ?seen::unique_words(UniqueCount);
+    -seen::unique_words(UniqueCount);
+    +seen::unique_words(UniqueCount+1);
     .
-
-// These two plans do the same thing as those above, but for words 'heard'.
-+!word_heard_checker(Word):heard::word(Word,Count)<-
-    -heard::word(Word,Count);
-    +heard::word(Word,Count+1);
++?seen::unique_words(UniqueCount)<-
+    UniqueCount=0;
+    +seen::unique_words(UniqueCount);
     .
--!word_heard_checker(Word)<-
-    +heard::word(Word,1);
-    !new_word_heard
-    .
-
-// The 4 plans below provide the tracking of the number of unique words seen
-// and heard.
-// The 'negative' plans will execute if the appropriate counter doesn't exist
-// yet, and create that counter.
-+!new_word_seen:seen::unique_words(Count)<-
-    -seen::unique_words(Count);
-    +seen::unique_words(Count+1);
-    .
--!new_word_seen<-
-    +seen::unique_words(1);
-    .
-
-+!new_word_heard:heard::unique_words(Count)<-
-    -heard::unique_words(Count);
-    +heard::unique_words(Count+1);
-    .
--!new_word_heard<-
-    +heard::unique_words(1);
-    .
-
 
 // Setting the agents 'state' is done regularly, so this is a dedicated plan
 // to handle settings the state.
@@ -135,6 +127,18 @@
     !setState("Idle");
     .
 
+@[atomic]
++!listen_to_speeches(Utterances,Counter)[source(Parent)]<-
+    !setState("Busy - Listening");
+    for(.member(Utterance,Utterances)){
+        for(.member(Word,Utterance)){
+            !word_heard_checker(Word);
+            !try_learn_word(Word);
+        };
+    };
+    .send(Parent,tell,finishedUtterances(Counter));
+    !setState("Idle");
+    .
 // The synchroniser artefact 'signals' the end of each year (by raising the
 // 'newYear' signal).  This causes all agents focusing on that artefact to gain
 // this belief.  By being atomic, and having the '.wait' statement, we ensure
