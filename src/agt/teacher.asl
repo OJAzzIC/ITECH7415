@@ -22,7 +22,7 @@ students_found(0).
 // students before attempting to pick a book from the library & giving the
 // student agents a goal of 'read_a_book(Title)'.
 // The teacher then adds an intention to check the student's reading progress.
-//@[atomic]
+@[atomic]
 +!tell_students_to_read_book:
         my_students(Students) &
         .length(Students,Length) &
@@ -36,24 +36,10 @@ students_found(0).
     .send(Students,achieve,read_a_book(Title));
     for(.member(Student,Students)) {
         +sent_instruction_to_read_book(Title,Student);
-//        +reading_progress(Student,Title,0);
-//        !!checking_student_progress(Student,Title);
     };
     .
 -!tell_students_to_read_book
     .
-
-// Plan to ask each student to report their progress.
-//+!checking_student_progress(Student,Title)<-
-//    ?age_of_student(Student,Age);
-//    !calculate_reading_delay(Age,Delay);
-//    ?current_book_word_count(WordCount);
-//    .wait(Delay*WordCount*0.1);
-//    .send(Student, askOne, number_words_read(Title), WordsReadCount);
-//    -reading_progress(Student,Title,_);
-//    +reading_progress(Student,Title,WordsReadCount);
-//    !!checking_student_progress(Student,Title);
-//    .
 
 // As each student finishes reading the book, they notify the teacher.
 // This plan cleans up the beliefs reading_progress & sent_instruction_to_read_book
@@ -65,8 +51,6 @@ students_found(0).
     .length(FinishedList,NumFinished);
     ?students_found(NumStudents);
     -sent_instruction_to_read_book(Title,Student);
-//    -reading_progress(Student,Title,_);
-//    .drop_intention(checking_student_progress(Student,Title));
     // Once all students have reported that they have finished reading, add an
     // intention to clean up our belief-base and tell the 'synchroniser'
     // artifact that the 'school' component has finished.
@@ -74,6 +58,7 @@ students_found(0).
         !!finish_cleanup(Title);
     };
     .
+
 +!finish_cleanup(Title)<-
         -current_book_word_count(_);
         ?my_students(StudentList);
@@ -81,9 +66,6 @@ students_found(0).
             -finished(Title)[source(Student)];
         };
         sync::finishSchool;
-    .
-+words_read(Title,Count)[source(Student)]<-true;
-//    if(checked_progress_already(Student,Title)
     .
 
 +sync::status("StartSchool")<-
