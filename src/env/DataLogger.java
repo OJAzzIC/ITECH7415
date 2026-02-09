@@ -39,7 +39,7 @@ public class DataLogger extends Artifact {
 
     // This is called by the synchroniser artefact, to save the results to a CSV
     // file.
-    public static void writeFile() {
+    public static void writeFiles() {
         // Don't try to write to the file if there's nothing for us to write...
         if (wordCountRows.size() == 0)
             return;

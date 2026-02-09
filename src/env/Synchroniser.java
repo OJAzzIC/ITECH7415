@@ -171,7 +171,7 @@ public class Synchroniser extends Artifact {
             // We're finished...
             setStatus("Finished");
             // Save the logged results
-            DataLogger.writeFile();
+            DataLogger.writeFiles();
             // Shutdown JaCaMo
             System.out.println("Shutting down environment...");
             try {

@@ -20,17 +20,6 @@ public class WordsLearnt extends Artifact {
     private static HashMap<String, ArrayList<AgentDetails>> agentAoA = new HashMap<>();
 
     @OPERATION
-    public void hasLearntWord(String agentName, String word, OpFeedbackParam<Boolean> result) {
-        // Get the list of agents who know 'word', or an empty list
-        // Convert it to a stream, to then filter it to only include entries relate to
-        // 'agentName', then see how many entries there are.
-        result.set(wordAoA.getOrDefault(word, new ArrayList<>())
-                .stream()
-                .filter(detail -> (detail.name().equals(agentName)))
-                .count() != 0);
-    }
-
-    @OPERATION
     public void learnWord(String agentName, String ses, int age, String word) {
         // Get the list of agents who already know this word, or an empty list
         ArrayList<AgentDetails> learntBy = wordAoA.getOrDefault(word, new ArrayList<>());

@@ -5,45 +5,62 @@
  * Initial beliefs & goals                                                       *
  * Set by the launcher class - refer to the addChildAgents() method for details. *
  *********************************************************************************/
+words::unique_seen(0).
+words::unique_heard(0).
 
 /*****************
  * Initial plans *
  *****************/
 
-// This trio of plans checks to see if the agent has 'heard' the word already.
+// This plan incremements the number of times a given word has been 'heard'.
+// Additionally, if this is the 1st time that word has been 'heard', increment
+// the counter which tracks how many unique words have been heard.
 +!word_heard_checker(Word)<-
-    ?heard::word(Word,Count);   // Check to see if we've already seen the word
-    -heard::word(Word,Count);   // Remove the belief that we've seen the word
-    +heard::word(Word,Count+1); // Add the belief that we've seen the word an extra time.
-    .
-+?heard::word(Word,Count)<-                 // This plan handles when the word is being seen for the 1st time
-    Count=0;                                //
-    +heard::word(Word,Count);               // Add the 'base' belief, so that the above plan can complete.
-    ?heard::unique_words(UniqueCount);      // Check to see if we've got a 'unique_words' belief
-    -heard::unique_words(UniqueCount);      // Remove that
-    +heard::unique_words(UniqueCount+1);    // Add it back, with an incremented value
-    .
-+?heard::unique_words(UniqueCount)<-    // This plan handles when the agent hears their 1st word
-    UniqueCount=0;
-    +heard::unique_words(UniqueCount);  // Add the 'base' belief, so that the above plans can complete.
+    ?words::word(Word,[Seen,Heard,AgeLearned]);
+    -words::word(Word,_);
+    +words::word(Word,[Seen,Heard+1,AgeLearned]);
+    if(Heard==0){
+        ?words::unique_heard(Count);
+        -+words::unique_heard(Count+1);
+    };
     .
 
-// This trio of plans does the same as the above, but for words 'seen'.
+// This plan does the same as above, but for a word 'seen'.
 +!word_seen_checker(Word)<-
-    ?seen::word(Word,Count);
-    -seen::word(Word,Count);
-    +seen::word(Word,Count+1);
+    ?words::word(Word,[Seen,Heard,AgeLearned]);
+    -words::word(Word,_);
+    +words::word(Word,[Seen+1,Heard,AgeLearned]);
+    if(Seen==0){
+        ?words::unique_seen(Count);
+        -+words::unique_seen(Count+1);
+    };
     .
-+?seen::word(Word,Count)<-
-    Count=0;
-    +seen::word(Word,Count);
-    ?seen::unique_words(UniqueCount);
-    -seen::unique_words(UniqueCount);
-    +seen::unique_words(UniqueCount+1);
+
+// This plan gets the agent to try to 'learn' the word.
+// The criteria are that the word has been:
+//  heard at least 20 times; or
+//  seen at least 20 times; or
+//  both seen and heard at least 12 times each.
++!try_learn_word(Word)<-
+    ?words::word(Word,[Seen,Heard,AgeLearned]);
+    if(AgeLearned==0){
+        if((Seen>12 & Heard>12)|Seen>20|Heard>20){
+            ?age(Age);
+            -words::word(Word,_);
+            +words::word(Word,[Seen,Heard,Age]);
+            .my_name(Me);
+            ?home::ses(Ses,_);
+            learnt::learnWord(Me,Ses,Age,Word);
+        };
+    };
     .
-+?seen::unique_words(UniqueCount)<-
-    UniqueCount=0;
-    +seen::unique_words(UniqueCount);
+
+// In the above 3 plans, a check is made to see if a word is present in the belief base.
+// The 1st time that check is made for a given word, this plan will be executed.
+// This plan creates the starting belief about the given word.
++?words::word(Word,[Seen,Heard,AgeLearned])<-
+    Seen=0; Heard=0; AgeLearned=0;
+    +words::word(Word,[Seen,Heard,AgeLearned]);
     .
 
 // Setting the agents 'state' is done regularly, so this is a dedicated plan
@@ -73,22 +90,6 @@
         !setState("Idle");
     }
     .
-
-+!try_learn_word(Word)<-
-    .my_name(Me);
-    learnt::hasLearntWord(Me,Word,Learned);
-    if(not Learned){
-        ?heard::word(Word,HeardCount);
-        ?seen::word(Word,SeenCount);
-        if((HeardCount>12 & SeenCount>12)|(HeardCount>20)|(SeenCount>20)){
-            ?age(Age);
-            ?home::ses(Ses,_);
-            learnt::learnWord(Me,Ses,Age,Word);
-        };
-    };
-    .
-+?heard::word(_,_).
-+?seen::word(_,_).
 
 // The custom launcher tells the 'parent' agents to create groups representing
 // homes/family units, and tells this child agent which one to join, to play
@@ -142,20 +143,18 @@
 // The synchroniser artefact 'signals' the end of each year (by raising the
 // 'newYear' signal).  This causes all agents focusing on that artefact to gain
 // this belief.  By being atomic, and having the '.wait' statement, we ensure
-// both that nothing else it attempted while running this plan AND that the
+// both that nothing else is attempted while running this plan AND that the
 // agent has actually finished processing all words seen or heard.
 @[atomic]
 +sync::newYear<-
     .wait(activityState("Idle"));
     .my_name(Me);
-    .print("Doing end-of-year duties...");
     ?age(Age);
     ?home::ses(Ses,_);
-    ?seen::unique_words(WordsSeenCount);
-    ?heard::unique_words(WordsHeardCount);
+    ?words::unique_seen(WordsSeenCount);
+    ?words::unique_heard(WordsHeardCount);
     learnt::numWordsKnown(Me,WordsLearntCount);
     addAnnualStats(Me,Ses,Age,WordsSeenCount,WordsHeardCount,WordsLearntCount);
-    .print("Completed end-of-year duties...");
     .
 
 // A little back-and-forth plan to get the synchroniser to wait until all child
@@ -180,20 +179,4 @@
         +age(NewAge);
     }
     !setState("Idle");
-    .
-/* The plan below is used to customise the askOne performative.
-   askOne (and askAll) normally just consult the agent's belief base.
-   With this customisation, the answer can be something not in the belief base
-   (e.g., the result of some operations) and not handled by +? events. This
-   customisation is applied only when the content of the askOne message matches
-   "number_words_read(Title)".
-   'kqml_received' MUST not be changed, otherwise this won't get triggered.
-   1st term is the sending agent.
-   2nd term is the 'performative' verb received.
-   3rd term is the request.
-   4th term, optional, is the 'response' field.
-*/
-+!kqml_received(Sender,askOne,number_words_read(Title),Count):school::my_teacher(Teacher) & Sender==Teacher<-
-    ?words_read(Title,WordCount);
-    .send(Sender,tell,WordCount,Count);
     .
