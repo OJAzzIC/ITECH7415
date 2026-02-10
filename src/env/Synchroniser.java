@@ -50,6 +50,7 @@ public class Synchroniser extends Artifact {
             if (numGroupsCreated == numFamily) {
                 ObsProperty status = getObsProperty("status");
                 status.updateValue("Ready");
+                System.out.println("Simulation ready to start.");
             }
         }
     }

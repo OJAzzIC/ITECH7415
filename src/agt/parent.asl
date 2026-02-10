@@ -82,9 +82,7 @@
         ?home::words_to_speak(RemainingWords);
         DesiredWords=RemainingWords/Counter;
         getBulkUtterances(DesiredWords,Utterances,NumWordsReceived);
-        .send(Child,achieve,listen_to_speeches(Utterances,Counter));
-        .wait(finishedUtterances(Counter)[source(Child)]);
-        -finishedUtterances(_);
+        .send(Child,tell,listen_to_utterances(Utterances,Counter));
         -home::words_to_speak(_);
         +home::words_to_speak(RemainingWords-NumWordsReceived);
         -home::iterationsLeft(_);
@@ -93,6 +91,10 @@
     // Remove the counters
     -home::words_to_speak(_);
     -home::iterationsLeft(_);
+    .
+
++finishedUtterances[source(Child)]<-
+    -finishedUtterances[source(Child)];
     // Tell the synchroniser that this agent has completed the task.
     sync::finishedHome;
     .
