@@ -1,14 +1,17 @@
 package vocab;
 
 import java.nio.file.*;
-import java.util.*;
-import java.util.logging.*;
+import java.util.Random;
+import java.util.LinkedList;
+import java.util.logging.Logger;
 
 import jacamo.infra.JaCaMoLauncher;
 import jacamo.infra.JaCaMoRuntimeServices;
-import jacamo.platform.*;
-import jacamo.project.*;
-import jacamo.util.*;
+import jacamo.platform.Platform;
+import jacamo.platform.EnvironmentWebInspector;
+import jacamo.project.JaCaMoProject;
+import jacamo.project.JaCaMoAgentParameters;
+import jacamo.util.Config;
 import jason.JasonException;
 import jason.asSyntax.ASSyntax;
 import jason.asSyntax.parser.ParseException;

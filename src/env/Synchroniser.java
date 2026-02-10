@@ -3,13 +3,12 @@ package vocab;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
-import cartago.AgentId;
 import cartago.Artifact;
-import cartago.ArtifactId;
 import cartago.GUARD;
 import cartago.OPERATION;
 import cartago.ObsProperty;
 import jason.runtime.RuntimeServicesFactory;
+
 import vocab.DataLogger;
 
 public class Synchroniser extends Artifact {

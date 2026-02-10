@@ -1,10 +1,8 @@
 package vocab;
 
-import java.io.InputStream;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.List;
 
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.core.file.FileConfig;

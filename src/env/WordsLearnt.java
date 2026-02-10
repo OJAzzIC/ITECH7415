@@ -1,16 +1,10 @@
 package vocab;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.stream.Stream;
 
 import cartago.Artifact;
 import cartago.OPERATION;
-import cartago.OpFeedbackParam;
-import jason.stdlib.foreach;
-import jason.util.Pair;
 
 import vocab.WordLearntRow;
 

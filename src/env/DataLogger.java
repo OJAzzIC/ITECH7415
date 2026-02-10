@@ -1,15 +1,14 @@
 package vocab;
 
 import java.io.FileWriter;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import com.opencsv.CSVWriter;
 
 import cartago.Artifact;
 import cartago.OPERATION;
+
 import vocab.WordLearntRow;
 import vocab.WordsLearnt;
 

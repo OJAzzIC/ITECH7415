@@ -4,19 +4,14 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.concurrent.locks.ReentrantLock;
 
 import cartago.*;
-import jason.asSyntax.*;
-import jason.stdlib.foreach;
 
 public class Library extends Artifact {
     private static Random rnd = new Random();
