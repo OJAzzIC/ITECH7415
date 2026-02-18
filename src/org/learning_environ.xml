@@ -40,12 +40,6 @@
                         <role id="adult" min="1" />
                         <role id="child" min="1" />
                     </roles>
-                    <!-- <links>
-                        <link from="parent" to="offspring" type="authority" scope="intra-group"
-                            extends-subgroups="true" bi-dir="false" />
-                        <link from="parent" to="offspring" type="communication" scope="intra-group"
-                            extends-subgroups="true" bi-dir="true" />
-                    </links> -->
                     <subgroups>
                         <group-specification id="indv_home" min="1">
                             <roles>
@@ -68,13 +62,13 @@
                 ds="All students instructed to read a specific book">
                 <plan operator="sequence">
                     <goal id="find_my_students" />
-                    <goal id="tell_students_to_read_book" />
+                    <goal id="read_books" />
                 </plan>
             </goal>
 
             <mission id="tellStudentsToRead" min="1">
                 <goal id="find_my_students" />
-                <goal id="tell_students_to_read_book" />
+                <goal id="read_books" />
             </mission>
         </scheme>
         <scheme id="speak_to_child">

@@ -77,13 +77,13 @@
 
 // A parent agent has said an utterance to this child agent.
 @[atomic]
-+!listen_to_speech(Utterance)[source(Parent)]<-
++listen_to_speech(Utterance)[source(Parent)]<-
     !setState("Busy - Listening");
     for(.member(Word,Utterance)){
         !word_heard_checker(Word);
         !try_learn_word(Word);
     };
-    .send(Parent,tell,finishedUtterance);
+    .send(Parent,tell,finishedListening);
     !setState("Idle");
     .
 

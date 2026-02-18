@@ -1,7 +1,13 @@
 { include("inc/adult_common.asl") }
 
-// Initial Beliefs
+/***************************
+ * Initial beliefs & goals *
+ ***************************/
 students_found(0).
+
+/*****************
+ * Initial plans *
+ *****************/
 
 +!find_my_students<-
     .wait(sync::status("Ready"));
@@ -17,6 +23,43 @@ students_found(0).
     sync::schoolReady;
     .
 
++!read_books<-
+    .wait(sync::status("StartSchool"));
+    sync::startSchool;
+    ?sync::agent_age(ChildAge);
+    if(ChildAge<5){
+        get_bookTitleRandomly(Title);
+        ?my_students(Students);
+        !read_book_aloud_to_child(Title,Students);
+    }elif(ChildAge<=7){
+        .random(Random);
+        if(Random>=0.5){
+            get_bookTitleRandomly(Title);
+            ?my_students(Students);
+            !read_book_aloud_to_child(Title,Students);
+        }else{
+            !tell_students_to_read_book;
+        }
+    }else{
+        !tell_students_to_read_book;
+    }
+    .
+
+@[atomic]
++finishedListening[source(Child)]<-
+    -finishedListening[source(Child)];
+    +finished(Child);
+    .count(finished(_),NumFinished);
+    .print(NumFinished);
+    ?students_found(NumStudents);
+    if(NumFinished==NumStudents){
+        while(.count(finishedListening,Counter) & Counter\==0){
+            -finisheded(_);
+        }
+        sync::finishSchool;
+    }
+    .
+
 // Time to tell all students in the 'classroom' to read a book.
 // Ensures that there are books available, and that there is a 'class' of
 // students before attempting to pick a book from the library & giving the
@@ -28,11 +71,8 @@ students_found(0).
         .length(Students,Length) &
         Length>0
     <-
-    .wait(sync::status("StartSchool"));
-    sync::startSchool;
     get_bookTitleRandomly(Title);
     getWordCountByBookTitle(Title,WordCount);
-    +current_book_word_count(WordCount);
     .send(Students,achieve,read_a_book(Title));
     for(.member(Student,Students)) {
         +sent_instruction_to_read_book(Title,Student);
@@ -55,19 +95,13 @@ students_found(0).
     // intention to clean up our belief-base and tell the 'synchroniser'
     // artifact that the 'school' component has finished.
     if(NumFinished==NumStudents){
-        !!finish_cleanup(Title);
-    };
-    .
-
-+!finish_cleanup(Title)<-
-        -current_book_word_count(_);
-        ?my_students(StudentList);
-        for(.member(Student,StudentList)){
+        for(.member(Student,FinishedList)){
             -finished(Title)[source(Student)];
         };
         sync::finishSchool;
+    };
     .
 
 +sync::status("StartSchool")<-
-    resetGoal(tell_students_to_read_book);
+    resetGoal(read_books);
     .

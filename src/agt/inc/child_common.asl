@@ -4,10 +4,17 @@
 // Include all beliefs, goals & plans common to all agents
 { include("inc/common.asl") }
 
+/***************************
+ * Initial beliefs & goals *
+ ***************************/
 words::unique_seen(0).
 words::unique_heard(0).
 
-// In the above 3 plans, a check is made to see if a word is present in the
+/*****************
+ * Initial plans *
+ *****************/
+
+// Elsewhere, a check is made to see if a word is present in the
 // belief base.  The 1st time that check is made for a given word, this plan
 // will be executed (as the word isn't in the belief base).
 // This plan creates the starting belief about the given word.
