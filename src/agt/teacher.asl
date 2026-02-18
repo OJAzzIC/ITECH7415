@@ -45,16 +45,14 @@ students_found(0).
     }
     .
 
-@[atomic]
 +finishedListening[source(Child)]<-
     -finishedListening[source(Child)];
     +finished(Child);
     .count(finished(_),NumFinished);
-    .print(NumFinished);
     ?students_found(NumStudents);
     if(NumFinished==NumStudents){
-        while(.count(finishedListening,Counter) & Counter\==0){
-            -finisheded(_);
+        while(.count(finished(_),Counter) & Counter\==0){
+            -finished(_);
         }
         sync::finishSchool;
     }
