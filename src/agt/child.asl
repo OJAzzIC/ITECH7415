@@ -75,15 +75,15 @@
     .
 
 
-// A parent agent has said an utterance to this child agent.
+// Another agent has said something to this child agent.
 @[atomic]
-+listen_to_speech(Utterance)[source(Parent)]<-
++listen_to_speech(Words)[source(Other)]<-
     !setState("Busy - Listening");
-    for(.member(Word,Utterance)){
+    for(.member(Word,Words)){
         !word_heard_checker(Word);
         !try_learn_word(Word);
     };
-    .send(Parent,tell,finishedListening);
+    .send(Other,tell,finishedListening);
     !setState("Idle");
     .
 
