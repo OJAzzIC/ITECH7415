@@ -38,9 +38,16 @@ mas child_vocabulary_acquisition {
     }
   }
 
-  // This line tells JaCaMo to create a pool of threads to share between all
-  // agents, rather than run each agent within it's own thread.  This probably
-  // results in slightly slower execution if the user's machine is able to
-  // process more threads simultaneously, however it's a good compromise.
-  //platform: local(asych_shared,64)
+  // This next line tells JaCaMo to use a pool of threads to share amongst the
+  // agents, as well as the number of times each part of the reasoning cycle is
+  // to be executed by each agent when it is selected to run in one of the 
+  // threads.
+  // It is acknowledged that most systems do not have enough CPU cores to allow
+  // all 64 threads to run simultaneously.  Instead, this is used to prevent
+  // configurations with very large numbers of agents from locking-up during
+  // startup if the system is unable to handle the creation of, and switching
+  // between, so many threads.
+  // https://github.com/jason-lang/jason/blob/master/doc/tech/concurrency.adoc,
+  // Configuration section
+  platform: local(asych_shared,64,1,1,5)
 }
