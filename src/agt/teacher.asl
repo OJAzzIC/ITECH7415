@@ -23,6 +23,7 @@ students_found(0).
     sync::schoolReady;
     .
 
+@[atomic]
 +!read_books<-
     .wait(sync::status("StartSchool"));
     sync::startSchool;
