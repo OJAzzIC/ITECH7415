@@ -34,10 +34,9 @@ public class Utterances extends Artifact {
         if (utterancesMap.size() != 0) {
             return;
         }
-        filepath = filePath;
-        Utterances utter = new Utterances();
-        utter.loadUtterances();
-        utter.loadParticipants();
+        Utterances.filepath = filePath;
+        loadUtterances();
+        loadParticipants();
     }
 
     // Assume that the utterances are found in files containing 'utterances' in
@@ -45,7 +44,7 @@ public class Utterances extends Artifact {
     // Assume that they are all CSV files.
     // Assume that fields we're after are 'speaker_code' and 'gloss', and that they
     // are present.
-    private void loadUtterances() {
+    private static void loadUtterances() {
         System.out.print("Loading utterances: ");
         utterancesMap = HashMapFromCSVFiles(filepath, "utterances", new String[] { "speaker_code", "gloss" });
         // This sets up the backing-field for the observable property, which agents
@@ -59,13 +58,13 @@ public class Utterances extends Artifact {
     // Assume that they are all CSV files.
     // Assume that the fields we're after are 'role' and 'id', and that they are
     // present.
-    private void loadParticipants() {
+    private static void loadParticipants() {
         System.out.print("Loading participant metadata: ");
         participantRoleToCodeMapping = HashMapFromCSVFiles(filepath, "participants", new String[] { "role", "id" });
     }
 
     // Produce a HashMap<String, ArrayList<String>> from all CSV files found.
-    private HashMap<String, ArrayList<String>> HashMapFromCSVFiles(final String basePath, final String fileNamePart,
+    private static HashMap<String, ArrayList<String>> HashMapFromCSVFiles(final String basePath, final String fileNamePart,
             final String[] headers) {
         // Some sanity checks - if these fail, the rest is pointless to attempt, so we
         // throw Exceptions.
