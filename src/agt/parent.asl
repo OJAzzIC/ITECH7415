@@ -78,8 +78,7 @@
     // Create a counter to track how many words are remaining to be 'spoken'
     +home::words_to_speak(WordsToSpeak);
     +home::iterationsLeft(20);
-    while(home::iterationsLeft(Counter) & Counter>0){
-        ?home::words_to_speak(RemainingWords);
+    while(home::iterationsLeft(Counter) & Counter>0 & home::words_to_speak(RemainingWords) & RemainingWords>0){
         DesiredWords=RemainingWords/Counter;
         getBulkUtterances(DesiredWords,Utterances,NumWordsReceived);
         .send(Child,tell,listen_to_utterances(Utterances,Counter));
