@@ -37,10 +37,10 @@ public class Library extends Artifact {
                     byte b1 = buffer.get();
                     byte b2 = buffer.get();
                     if (((b0 & 0xFF) == 0xEF) && ((b1 & 0xFF) == 0xBB) && ((b2 & 0xFF) == 0xBF))
-                        contents = StandardCharsets.UTF_8.decode(buffer).toString();
+                        contents = StandardCharsets.UTF_8.decode(buffer).toString().toLowerCase();
                     else {
                         buffer.position(0);
-                        contents = StandardCharsets.UTF_8.decode(buffer).toString();
+                        contents = StandardCharsets.UTF_8.decode(buffer).toString().toLowerCase();
                     }
                     books.put(f.getName(), contents);
                 }

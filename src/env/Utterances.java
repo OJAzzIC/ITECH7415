@@ -15,8 +15,9 @@ import com.opencsv.exceptions.CsvException;
 import cartago.*;
 
 public class Utterances extends Artifact {
+    private static final Random rnd = new Random();
     private static String filepath = "";
-    private static HashMap<String, ArrayList<String>> utterancesMap = new HashMap<>();
+    private static HashMap<String, ArrayList<String[]>> utterancesMap = new HashMap<>();
     private static HashMap<String, ArrayList<String>> participantRoleToCodeMapping = new HashMap<>();
     private static int utterances_available_count;
     private static int speaker_code_count;
@@ -46,10 +47,28 @@ public class Utterances extends Artifact {
     // are present.
     private static void loadUtterances() {
         System.out.print("Loading utterances: ");
-        utterancesMap = HashMapFromCSVFiles(filepath, "utterances", new String[] { "speaker_code", "gloss" });
+        // Get the raw data from the utterance CSV files.
+        // HashMap returned is keyed by speaker_code, which each value being an
+        // ArrayList<String> where each String is an entire utterance.
+        HashMap<String, ArrayList<String>> raw = HashMapFromCSVFiles(filepath, "utterances",
+                new String[] { "speaker_code", "gloss" });
+        // Need to pre-split the returned strings - saves many op's later in
+        // getBulkUtterances().
+        for (var entry : raw.entrySet()) {
+            ArrayList<String[]> splitList = new ArrayList<>(entry.getValue().size());
+            for (String utterance : entry.getValue()) {
+                ArrayList<String> temp = new ArrayList<>();
+                for (String subString : utterance.split(" ")) {
+                    if (!subString.isBlank())
+                        temp.add(subString.toLowerCase());
+                }
+                splitList.add(temp.toArray(new String[temp.size()]));
+            }
+            utterancesMap.put(entry.getKey(), splitList);
+        }
         // This sets up the backing-field for the observable property, which agents
         // could use
-        for (ArrayList<String> entry : utterancesMap.values())
+        for (ArrayList<String[]> entry : utterancesMap.values())
             utterances_available_count += entry.size();
     }
 
@@ -64,7 +83,8 @@ public class Utterances extends Artifact {
     }
 
     // Produce a HashMap<String, ArrayList<String>> from all CSV files found.
-    private static HashMap<String, ArrayList<String>> HashMapFromCSVFiles(final String basePath, final String fileNamePart,
+    private static HashMap<String, ArrayList<String>> HashMapFromCSVFiles(final String basePath,
+            final String fileNamePart,
             final String[] headers) {
         // Some sanity checks - if these fail, the rest is pointless to attempt, so we
         // throw Exceptions.
@@ -112,6 +132,8 @@ public class Utterances extends Artifact {
                         // Reached the end of the file, so break out of the 'while' loop
                         finished = true;
                     else {
+                        lineRead[0] = lineRead[0].toLowerCase();
+                        lineRead[1] = lineRead[1].toLowerCase();
                         // Assume that the 1st value in the 'lineRead' array is the 'key' field for
                         // HashMap.
                         // Assume that the 2nd value in the 'lineRead' array is the ONLY 'value' field
@@ -159,11 +181,10 @@ public class Utterances extends Artifact {
     @OPERATION
     void getRandomUtterance(OpFeedbackParam<String> speakerCode, OpFeedbackParam<String[]> utterance,
             OpFeedbackParam<Integer> utteranceLength) {
-        Random rnd = new Random();
         String[] keys = utterancesMap.keySet().toArray(new String[0]);
         String rndSpeaker = keys[rnd.nextInt(keys.length)];
-        ArrayList<String> utterances = utterancesMap.get(rndSpeaker);
-        String[] rndUtterance = utterances.get(rnd.nextInt(utterances.size())).split(" ");
+        ArrayList<String[]> utterances = utterancesMap.get(rndSpeaker);
+        String[] rndUtterance = utterances.get(rnd.nextInt(utterances.size()));
         speakerCode.set(rndSpeaker);
         utterance.set(rndUtterance);
         utteranceLength.set(rndUtterance.length);
@@ -174,15 +195,15 @@ public class Utterances extends Artifact {
             OpFeedbackParam<Integer> numWordsProvided) {
         if (numWordsRequired < 1)
             return;
-        Random rnd = new Random();
         ArrayList<String[]> results = new ArrayList<>();
-        int runningTally=0;
+        int runningTally = 0;
+        Object[] values = utterancesMap.values().toArray();
         while (numWordsRequired > 0) {
-            Collection<ArrayList<String>> l1 = utterancesMap.values();
-            ArrayList<String>l2=(ArrayList<String>)(l1.toArray()[rnd.nextInt(l1.size())]);
-            String[]utterance=l2.get(rnd.nextInt(l2.size())).split(" ");
-            runningTally+=utterance.length;
-            numWordsRequired-=utterance.length;
+            @SuppressWarnings("unchecked")
+            ArrayList<String[]> l2 = (ArrayList<String[]>) values[rnd.nextInt(values.length)];
+            String[] utterance = l2.get(rnd.nextInt(l2.size()));
+            runningTally += utterance.length;
+            numWordsRequired -= utterance.length;
             results.add(utterance);
         }
         utternaces.set(results.toArray());
