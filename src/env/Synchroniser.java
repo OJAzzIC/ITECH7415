@@ -23,7 +23,7 @@ public class Synchroniser extends Artifact {
     private static int numYears = 0;
     private static int agentAge = 0;
 
-    private static final int CYCLES_PER_YEAR = 5;
+    private static final int CYCLES_PER_YEAR = 365;
     private static final ReentrantLock lock = new ReentrantLock();
 
     void init() {
