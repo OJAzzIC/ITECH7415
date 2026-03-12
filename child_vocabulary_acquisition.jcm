@@ -49,5 +49,5 @@ mas child_vocabulary_acquisition {
   // between, so many threads.
   // https://github.com/jason-lang/jason/blob/master/doc/tech/concurrency.adoc,
   // Configuration section
-  platform: local(asych_shared,64,1,1,5)
+  platform: local(asych_shared,64,5,5,10)
 }
