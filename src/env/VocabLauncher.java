@@ -16,6 +16,7 @@ import jason.JasonException;
 import jason.asSyntax.ASSyntax;
 import jason.asSyntax.parser.ParseException;
 import jason.mas2j.AgentParameters;
+import jason.mas2j.ClassParameters;
 import jason.runtime.RuntimeServicesFactory;
 
 import vocab.DataLogger;
@@ -192,6 +193,8 @@ public class VocabLauncher extends JaCaMoLauncher {
         // Create a template child agent
         JaCaMoAgentParameters agChild = new JaCaMoAgentParameters(jaCaMoProject);
         agChild.name = "child";
+        agChild.bbClass=new ClassParameters("vocab.HashMapBB");
+        agChild.bbClass.addParameter("\"word(key,_)\"");
         try {
             agChild.setSource("child.asl");
         } catch (Exception e) {
@@ -246,6 +249,9 @@ public class VocabLauncher extends JaCaMoLauncher {
         // Create a template adult agent
         JaCaMoAgentParameters agParent = new JaCaMoAgentParameters(jaCaMoProject);
         agParent.name = "parent";
+        agParent.bbClass=new ClassParameters("vocab.HashMapBB");
+        agParent.bbClass.addParameter("\"words_to_speak(_)\"");
+        agParent.bbClass.addParameter("\"iterationsLeft(_)\"");
         try {
             agParent.setSource("parent.asl");
         } catch (Exception e) {
