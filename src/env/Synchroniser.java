@@ -64,9 +64,9 @@ public class Synchroniser extends Artifact {
 
     // It's time to step through to the next day of the simulation
     private void endOfDay() {
-        ObsProperty status = getObsProperty("status");
-        if (status.stringValue() == "Finished")
+        if ("Finished".equals(getObsProperty("status").stringValue()))
             return;
+        parentsFinished = 0;
         setStatus("HomeFinished");
         ++cyclesCompleted;
         System.out.println("Finished day " + cyclesCompleted + " of year " + (completedYearCount + 1) + ".");
@@ -97,7 +97,6 @@ public class Synchroniser extends Artifact {
                 signal("finalise");
             }
         }
-        parentsFinished = 0;
     }
 
     private boolean isTeacher(String agentName) {
@@ -143,8 +142,8 @@ public class Synchroniser extends Artifact {
     @OPERATION
     public void finishedHome() {
         ++parentsFinished;
-        await("allParentsFinished");
         if (lock.tryLock()) {
+            await("allParentsFinished");
             endOfDay();
             lock.unlock();
         }
