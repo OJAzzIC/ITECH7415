@@ -19,7 +19,6 @@
         ?words::unique_heard(Count);
         -+words::unique_heard(Count+1);
     };
-    -words::word(Word,_);
     +words::word(Word,[Seen,Heard+1,AgeLearned]);
     .
 
@@ -30,7 +29,6 @@
         ?words::unique_seen(Count);
         -+words::unique_seen(Count+1);
     };
-    -words::word(Word,_);
     +words::word(Word,[Seen+1,Heard,AgeLearned]);
     .
 
@@ -44,7 +42,6 @@
     if(AgeLearned==0){
         if((Seen>12 & Heard>12)|Seen>20|Heard>20){
             ?age(Age);
-            -words::word(Word,_);
             +words::word(Word,[Seen,Heard,Age]);
         };
     };
