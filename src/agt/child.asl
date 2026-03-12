@@ -54,6 +54,7 @@
 // 'Agent' is the agent which gave us the goal 'read_a_book(Title)'.
 // 'Title' is the title of the book, naturally enough.
 // 'Teacher' is the agent playing 'teacher' role within the class this agent is a member of.
+@[atomic]
 +!read_a_book(Title)[source(Agent)]:school::my_teacher(Teacher) & Agent==Teacher <-
     get_bookByTitle(Title,Text);
 //  .length(Text,WordCount) // DO NOT USE WITH LOOOOONG TEXTS
@@ -84,6 +85,7 @@
         !try_learn_word(Word);
     };
     .send(Other,tell,finishedListening);
+    -listen_to_speech(Words)[source(Other)];
     !setState("Idle");
     .
 
