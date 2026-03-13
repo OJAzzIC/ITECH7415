@@ -166,7 +166,7 @@ public class Synchroniser extends Artifact {
         ++childrenFinalised;
         getObsProperty("children_finished").updateValue(childrenFinalised);
         await("allChildrenFinished");
-        if (getObsProperty("status").stringValue() != "Finished" && lock.tryLock()) {
+        if (!"Finished".equals(getObsProperty("status").stringValue()) && lock.tryLock()) {
             // We're finished...
             setStatus("Finished");
             // Save the logged results
