@@ -780,7 +780,7 @@ Books (.txt files)                    Utterances (.csv files)
 
 **File:** `logging.properties`
 
-- Default log level: `INFO`
+- Default log level: `WARN`
 - Console handler: `java.util.logging.ConsoleHandler` with `jason.runtime.MASConsoleLogFormatter`
 - File handler: Disabled by default; can be enabled by uncommenting the `FileHandler` configuration (outputs to `log/mas-*.log`).
 
