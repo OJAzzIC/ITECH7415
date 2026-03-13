@@ -28,7 +28,7 @@ Child agents learn words by accumulating exposure. A word is considered "learnt"
 - **seen** (read) it more than 20 times, **or**
 - **both** seen and heard it more than 12 times each.
 
-The simulation progresses through simulated years (each comprising 5 days). Each day consists of a **school** phase (where a teacher reads to or instructs children to read books) and a **home** phase (where parents speak utterances to their children, with the volume of speech determined by SES).
+The simulation progresses through simulated years (each comprising 365 days). Each day consists of a **school** phase (where a teacher reads to or instructs children to read books) and a **home** phase (where parents speak utterances to their children, with the volume of speech determined by SES).
 
 ## How It Works
 
@@ -189,7 +189,7 @@ Configuration loaded:
 ...
 Finished day 1 of year 1.
 ...
-Finished day 5 of year 3.
+Finished day 365 of year 3.
 Summary data file successfully written.
 Word count data file successfully written.
 Shutting down environment...
