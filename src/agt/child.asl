@@ -5,6 +5,7 @@
  * Initial beliefs & goals                                                       *
  * Set by the launcher class - refer to the addChildAgents() method for details. *
  *********************************************************************************/
+attentiveness(1.0).
 
 /*****************
  * Initial plans *
@@ -15,6 +16,10 @@
 // the counter which tracks how many unique words have been heard.
 +!word_heard_checker(Word)<-
     ?words::word(Word,[Seen,Heard,AgeLearned]);
+    if(Heard==0 & Seen==0){
+        ?words::unique_encountered(EncCount);
+        -+words::unique_encountered(EncCount+1);
+    };
     if(Heard==0){
         ?words::unique_heard(Count);
         -+words::unique_heard(Count+1);
@@ -25,6 +30,10 @@
 // This plan does the same as above, but for a word 'seen'.
 +!word_seen_checker(Word)<-
     ?words::word(Word,[Seen,Heard,AgeLearned]);
+    if(Seen==0 & Heard==0){
+        ?words::unique_encountered(EncCount);
+        -+words::unique_encountered(EncCount+1);
+    };
     if(Seen==0){
         ?words::unique_seen(Count);
         -+words::unique_seen(Count+1);
@@ -47,6 +56,20 @@
     };
     .
 
++!maybe_process_heard(Word) : attentiveness(F) <-
+    .random(R);
+    if (R < F) {
+        !word_heard_checker(Word);
+        !try_learn_word(Word);
+    }.
+
++!maybe_process_seen(Word) : attentiveness(F) <-
+    .random(R);
+    if (R < F) {
+        !word_seen_checker(Word);
+        !try_learn_word(Word);
+    }.
+
 
 // 'Agent' is the agent which gave us the goal 'read_a_book(Title)'.
 // 'Title' is the title of the book, naturally enough.
@@ -63,8 +86,7 @@
         !setState("Busy - Reading");
         for(.member(Word,Text)){
             if(not .length(Word,0)){
-                !word_seen_checker(Word);
-                !try_learn_word(Word);
+                !maybe_process_seen(Word);
             };
         };
         .send(Teacher,tell,finished(Title));
@@ -78,8 +100,7 @@
 +listen_to_speech(Words)[source(Other)]<-
     !setState("Busy - Listening");
     for(.member(Word,Words)){
-        !word_heard_checker(Word);
-        !try_learn_word(Word);
+        !maybe_process_heard(Word);
     };
     .send(Other,tell,finishedListening);
     -listen_to_speech(Words)[source(Other)];

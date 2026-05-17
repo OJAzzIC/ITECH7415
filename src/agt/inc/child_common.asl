@@ -9,6 +9,7 @@
  ***************************/
 words::unique_seen(0).
 words::unique_heard(0).
+words::unique_encountered(0).
 
 /*****************
  * Initial plans *
@@ -68,8 +69,9 @@ words::unique_heard(0).
     ?home::ses(Ses,_);
     ?words::unique_seen(WordsSeenCount);
     ?words::unique_heard(WordsHeardCount);
+    ?words::unique_encountered(WordsEncounteredCount);
     .count(words::word(_,[_,_,SomeAge]) & SomeAge\==0,WordsLearntCount);
-    addAnnualStats(Me,Ses,Age,WordsSeenCount,WordsHeardCount,WordsLearntCount);
+    addAnnualStats(Me,Ses,Age,WordsSeenCount,WordsHeardCount,WordsEncounteredCount,WordsLearntCount);
     .
 
 // A little back-and-forth plan to get the synchroniser to wait until all child

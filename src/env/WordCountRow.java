@@ -6,14 +6,15 @@ package vocab;
 // parameters provided here.
 // Nothing NEEDS to be given inside the '{}'s, however whatever is there will be
 // included in the compiled class
-record WordCountRow(String name, String ses, int age, int uniqueSeen, int uniqueHeard, int learned) {
+record WordCountRow(String name, String ses, int age,
+        int uniqueSeen, int uniqueHeard, int uniqueEncountered, int learned) {
     String[] toArray() {
         return new String[] {
-                name,
-                ses,
+                name, ses,
                 Integer.toString(age),
                 Integer.toString(uniqueSeen),
                 Integer.toString(uniqueHeard),
+                Integer.toString(uniqueEncountered),
                 Integer.toString(learned)
         };
     }

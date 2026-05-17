@@ -32,8 +32,8 @@ public class DataLogger extends Artifact {
     // Agents will call this method to save-out the details about the number of
     // words they have encountered.
     @OPERATION
-    public void addAnnualStats(String agentName, String ses, int age, int uniqueSeen, int uniqueHeard, int learned) {
-        wordCountRows.add(new WordCountRow(agentName, ses, age, uniqueSeen, uniqueHeard, learned));
+    public void addAnnualStats(String agentName, String ses, int age, int uniqueSeen, int uniqueHeard, int uniqueEncountered, int learned) {
+        wordCountRows.add(new WordCountRow(agentName, ses, age, uniqueSeen, uniqueHeard, uniqueEncountered, learned));
     }
 
     // This is called by the synchroniser artefact, to save the results to a CSV
@@ -51,7 +51,7 @@ public class DataLogger extends Artifact {
         try (CSVWriter writer = new CSVWriter(new FileWriter(outputSummaryLocation()))) {
 
             // Build the headers, and write them to the file.
-            String[] headers = { "Name", "SES", "Age", "Unique_Seen", "Unique_Heard", "Words_Learned" };
+            String[] headers = { "Name", "SES", "Age", "Unique_Seen", "Unique_Heard", "Unique_Encountered", "Words_Learned" };
             writer.writeNext(headers, false);
             // Push each row of data out to the file.
             for (WordCountRow row : wordCountRows) {
