@@ -17,41 +17,49 @@ import cartago.*;
 public class Utterances extends Artifact {
     private static final Random rnd = new Random();
     private static String filepath = "";
-    private static HashMap<String, ArrayList<String[]>> utterancesMap = new HashMap<>();
+    // Named pools of utterances: pool name -> (speaker_code -> utterances).
+    // The "default" pool is the main corpus; additional pools (e.g. an ESL
+    // corpus) are declared with [[utterance_pool]] sections in
+    // simulation.conf and assigned to parents via [[parent_profile]].
+    private static final String DEFAULT_POOL = "default";
+    private static HashMap<String, HashMap<String, ArrayList<String[]>>> pools = new HashMap<>();
     private static HashMap<String, ArrayList<String>> participantRoleToCodeMapping = new HashMap<>();
     private static int utterances_available_count;
     private static int speaker_code_count;
 
-    // By the time init() is called, both HashMap's have been populated, so
+    // By the time init() is called, the pools have been populated, so
     // this 'just works'.
     void init() {
-        defineObsProperty("num_speaker_codes_available", utterancesMap.size());
+        defineObsProperty("num_speaker_codes_available",
+                pools.getOrDefault(DEFAULT_POOL, new HashMap<>()).size());
         defineObsProperty("utterances_available", utterances_available_count);
     }
 
-    // This is the method which initiates the loading of the utterances and the
-    // participant data.
+    // This is the method which initiates the loading of the default pool's
+    // utterances and the participant data.
     public static void loadUtterances(String filePath) {
-        if (utterancesMap.size() != 0) {
-            return;
-        }
         Utterances.filepath = filePath;
-        loadUtterances();
+        loadPool(DEFAULT_POOL, filePath);
         loadParticipants();
     }
 
+    // Load a named pool of utterances from a directory of CSV files.
     // Assume that the utterances are found in files containing 'utterances' in
     // their name
     // Assume that they are all CSV files.
     // Assume that fields we're after are 'speaker_code' and 'gloss', and that they
     // are present.
-    private static void loadUtterances() {
-        System.out.print("Loading utterances: ");
+    public static void loadPool(String poolName, String path) {
+        if (pools.containsKey(poolName)) {
+            return;
+        }
+        System.out.print("Loading utterance pool '" + poolName + "': ");
         // Get the raw data from the utterance CSV files.
         // HashMap returned is keyed by speaker_code, which each value being an
         // ArrayList<String> where each String is an entire utterance.
-        HashMap<String, ArrayList<String>> raw = HashMapFromCSVFiles(filepath, "utterances",
+        HashMap<String, ArrayList<String>> raw = HashMapFromCSVFiles(path, "utterances",
                 new String[] { "speaker_code", "gloss" });
+        HashMap<String, ArrayList<String[]>> utterancesMap = new HashMap<>();
         // Need to pre-split the returned strings - saves many op's later in
         // getBulkUtterances().
         for (var entry : raw.entrySet()) {
@@ -66,10 +74,12 @@ public class Utterances extends Artifact {
             }
             utterancesMap.put(entry.getKey(), splitList);
         }
+        pools.put(poolName, utterancesMap);
         // This sets up the backing-field for the observable property, which agents
         // could use
-        for (ArrayList<String[]> entry : utterancesMap.values())
-            utterances_available_count += entry.size();
+        if (DEFAULT_POOL.equals(poolName))
+            for (ArrayList<String[]> entry : utterancesMap.values())
+                utterances_available_count += entry.size();
     }
 
     // Assume that the participant meta-data is found in files containing
@@ -168,7 +178,7 @@ public class Utterances extends Artifact {
 
     @OPERATION
     void getSpeakerCodes(OpFeedbackParam<String[]> result) {
-        result.set((String[]) utterancesMap.keySet().toArray());
+        result.set((String[]) pools.get(DEFAULT_POOL).keySet().toArray());
     }
 
     // Provide a random utterance from the database.
@@ -181,6 +191,7 @@ public class Utterances extends Artifact {
     @OPERATION
     void getRandomUtterance(OpFeedbackParam<String> speakerCode, OpFeedbackParam<String[]> utterance,
             OpFeedbackParam<Integer> utteranceLength) {
+        HashMap<String, ArrayList<String[]>> utterancesMap = pools.get(DEFAULT_POOL);
         String[] keys = utterancesMap.keySet().toArray(new String[0]);
         String rndSpeaker = keys[rnd.nextInt(keys.length)];
         ArrayList<String[]> utterances = utterancesMap.get(rndSpeaker);
@@ -190,11 +201,33 @@ public class Utterances extends Artifact {
         utteranceLength.set(rndUtterance.length);
     }
 
+    // Backwards-compatible form: sample from the default pool.
     @OPERATION
     void getBulkUtterances(double numWordsRequired, OpFeedbackParam<Object[]> utternaces,
             OpFeedbackParam<Integer> numWordsProvided) {
-        if (numWordsRequired < 1)
+        getBulkUtterances(DEFAULT_POOL, numWordsRequired, utternaces, numWordsProvided);
+    }
+
+    // Sample utterances totalling at least numWordsRequired words from the
+    // named pool.  Unknown pool names fall back to the default pool (with a
+    // console warning) rather than failing the calling agent's plan.
+    @OPERATION
+    void getBulkUtterances(String poolName, double numWordsRequired, OpFeedbackParam<Object[]> utternaces,
+            OpFeedbackParam<Integer> numWordsProvided) {
+        HashMap<String, ArrayList<String[]>> utterancesMap = pools.get(poolName);
+        if (utterancesMap == null || utterancesMap.isEmpty()) {
+            System.out.println("WARNING: utterance pool '" + poolName
+                    + "' is unknown or empty; using the default pool instead.");
+            utterancesMap = pools.get(DEFAULT_POOL);
+        }
+        if (numWordsRequired < 1) {
+            // The feedback parameters must always be set; leaving them unset
+            // makes the calling agent's plan fail, which stalls the daily
+            // synchronisation cycle (the day never finishes).
+            utternaces.set(new Object[] {});
+            numWordsProvided.set(0);
             return;
+        }
         ArrayList<String[]> results = new ArrayList<>();
         int runningTally = 0;
         Object[] values = utterancesMap.values().toArray();

@@ -4,8 +4,17 @@
 /*********************************************************************************
  * Initial beliefs & goals                                                       *
  * Set by the launcher class - refer to the addChildAgents() method for details. *
+ * The launcher injects, per the child's [[child_profile]]:                      *
+ *   profile("name")                                                             *
+ *   attentiveness_heard(F)  attentiveness_seen(F)                               *
+ *   thresholds(Seen,Heard,Both)                                                 *
+ * The test-goal plans below supply the original model's defaults if the        *
+ * launcher injected nothing (e.g. agents created directly from the .jcm).      *
  *********************************************************************************/
-attentiveness(1.0).
++?profile(P)<- P = "typical".
++?attentiveness_heard(F)<- F = 1.0.
++?attentiveness_seen(F)<- F = 1.0.
++?thresholds(TS,TH,TB)<- TS = 20; TH = 20; TB = 12.
 
 /*****************
  * Initial plans *
@@ -42,28 +51,35 @@ attentiveness(1.0).
     .
 
 // This plan gets the agent to try to 'learn' the word.
-// The criteria are that the word has been:
-//  heard at least 20 times; or
-//  seen at least 20 times; or
-//  both seen and heard at least 12 times each.
+// The default criteria (thresholds(20,20,12)) are that the word has been:
+//  heard more than 20 times; or
+//  seen more than 20 times; or
+//  both seen and heard more than 12 times each.
+// The thresholds come from the child's profile so different learner types
+// can be modelled; the defaults reproduce the original rule exactly.
 +!try_learn_word(Word)<-
     ?words::word(Word,[Seen,Heard,AgeLearned]);
     if(AgeLearned==0){
-        if((Seen>12 & Heard>12)|Seen>20|Heard>20){
+        ?thresholds(TSeen,THeard,TBoth);
+        if((Seen>TBoth & Heard>TBoth)|Seen>TSeen|Heard>THeard){
             ?age(Age);
             +words::word(Word,[Seen,Heard,Age]);
         };
     };
     .
 
-+!maybe_process_heard(Word) : attentiveness(F) <-
+// Attentiveness gates: the child attends to any single heard/seen word with
+// the profile's channel-specific probability (1.0 = attends to everything).
++!maybe_process_heard(Word)<-
+    ?attentiveness_heard(F);
     .random(R);
     if (R < F) {
         !word_heard_checker(Word);
         !try_learn_word(Word);
     }.
 
-+!maybe_process_seen(Word) : attentiveness(F) <-
++!maybe_process_seen(Word)<-
+    ?attentiveness_seen(F);
     .random(R);
     if (R < F) {
         !word_seen_checker(Word);
@@ -107,26 +123,47 @@ attentiveness(1.0).
     !setState("Idle");
     .
 
+// Process one batch of utterances from the parent, then report it to the
+// synchroniser artifact.  The report happens only after the batch is fully
+// processed, so when the artifact has counted a report for every batch the
+// parent sent, the parent knows the child has heard everything for the day.
+// Each word goes through the attentiveness gate, so inattentive profiles
+// also attend to only some of the conversation at home.
 @[atomic]
 +listen_to_utterances(Utterances,Counter)[source(Parent)]<-
     !setState("Busy - Listening");
     for(.member(Utterance,Utterances)){
         for(.member(Word,Utterance)){
-            !word_heard_checker(Word);
-            !try_learn_word(Word);
+            !maybe_process_heard(Word);
         };
     };
     -listen_to_utterances(_,Counter)[source(Parent)];
-    +finished(Counter,Parent);
+    sync::utteranceBatchProcessed;
     .
+
+// A parent is reading a book aloud to this child at home (home_profile
+// books_per_day > 0).  Read-aloud words count as 'heard', through the same
+// attentiveness gate as conversation.  The batch report at the end feeds
+// the same day-end handshake as utterance batches.
 @[atomic]
-+finished(_,Parent)<-
-    .count(finished(_,_),NumFinished);
-    if(NumFinished==20){
-        while(.count(finished(_,_),Counter) & Counter>0){
-            -finished(Counter,_);
++listen_to_home_book(Text)[source(Parent)]<-
+    !setState("Busy - Listening");
+    for(.member(Word,Text)){
+        if(not .length(Word,0)){
+            !maybe_process_heard(Word);
         };
-        .send(Parent,tell,finishedUtterances);
-        !setState("Idle");
-    }
+    };
+    -listen_to_home_book(_)[source(Parent)];
+    sync::utteranceBatchProcessed;
+    .
+
+// The parent has confirmed that every batch it sent today was processed,
+// so the day's listening is definitely over - go idle.
+// (The previous design had the child count batches against a fixed total
+// of 20; a batch arriving after the count was satisfied left the child
+// stuck in 'Busy - Listening' forever, which hung the daily cycle and the
+// end-of-simulation finalisation.)
++day_done[source(Parent)]<-
+    -day_done[source(Parent)];
+    !setState("Idle");
     .

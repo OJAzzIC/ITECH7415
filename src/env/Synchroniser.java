@@ -1,6 +1,7 @@
 package vocab;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import cartago.Artifact;
@@ -23,8 +24,19 @@ public class Synchroniser extends Artifact {
     private static int numYears = 0;
     private static int agentAge = 0;
 
-    private static final int CYCLES_PER_YEAR = 365;
+    // Days per simulated year; 365 by default, overridable from the config
+    // file (agents.days_per_year) - mainly for quick smoke-test runs.
+    private static int CYCLES_PER_YEAR = 365;
+
+    public static void setDaysPerYear(int days) {
+        if (days > 0)
+            CYCLES_PER_YEAR = days;
+    }
     private static final ReentrantLock lock = new ReentrantLock();
+    // Set once the final year has completed.  Prevents any further daily
+    // cycling (a stray extra 'day' otherwise can run while the agents are
+    // finalising, double-signalling 'finalise' and corrupting the results).
+    private static boolean simulationEnding = false;
 
     void init() {
         defineObsProperty("status", "NotReady");
@@ -64,7 +76,7 @@ public class Synchroniser extends Artifact {
 
     // It's time to step through to the next day of the simulation
     private void endOfDay() {
-        if ("Finished".equals(getObsProperty("status").stringValue()))
+        if (simulationEnding || "Finished".equals(getObsProperty("status").stringValue()))
             return;
         parentsFinished = 0;
         setStatus("HomeFinished");
@@ -78,10 +90,14 @@ public class Synchroniser extends Artifact {
             setStatus("StartSchool");
         } else {
             // Finished the 'year'.
-            signal("newYear");
             ++completedYearCount;
             if (completedYearCount < numYears) {
                 // We still have more years to work through.
+                // Children record their annual stats on this signal; on the
+                // final year the 'finalise' signal (below) handles it instead,
+                // so the stats are guaranteed to be recorded before the CSV
+                // files are written.
+                signal("newYear");
                 ++agentAge;
                 ObsProperty age = getObsProperty("agent_age");
                 age.updateValue(agentAge);
@@ -93,7 +109,9 @@ public class Synchroniser extends Artifact {
                 System.out.println("Starting a new year");
                 setStatus("StartSchool");
             } else {
-                // All done, signal all agents to finalise themselves.
+                // All done - stop the daily cycle, then signal all agents to
+                // finalise themselves.
+                simulationEnding = true;
                 signal("finalise");
             }
         }
@@ -114,7 +132,7 @@ public class Synchroniser extends Artifact {
     // The teacher has indicated that they have 'started' school for the day.
     @OPERATION
     public void startSchool() {
-        if (!isTeacher(getCurrentOpAgentId().getAgentName()))
+        if (simulationEnding || !isTeacher(getCurrentOpAgentId().getAgentName()))
             return;
         setStatus("SchoolStarted");
     }
@@ -123,7 +141,7 @@ public class Synchroniser extends Artifact {
     // day.
     @OPERATION
     public void finishSchool() {
-        if (!isTeacher(getCurrentOpAgentId().getAgentName()))
+        if (simulationEnding || !isTeacher(getCurrentOpAgentId().getAgentName()))
             return;
         setStatus("SchoolFinished");
         setStatus("StartHome");
@@ -141,6 +159,11 @@ public class Synchroniser extends Artifact {
      */
     @OPERATION
     public void finishedHome() {
+        // Once the final year is over, ignore any late day-cycle activity:
+        // blocking here would park a workspace thread forever and starve the
+        // finalisation operations (deadlocking the results write).
+        if (simulationEnding)
+            return;
         ++parentsFinished;
         if (lock.tryLock()) {
             await("allParentsFinished");
@@ -152,6 +175,44 @@ public class Synchroniser extends Artifact {
     @GUARD
     boolean allParentsFinished() {
         return parentsFinished == numParents;
+    }
+
+    /*
+     * Daily utterance handshake between each parent and their child.
+     * The child reports each utterance batch it has finished processing; the
+     * parent (which knows exactly how many batches it sent) blocks until the
+     * child has processed all of them before ending its day.  Doing this
+     * count inside the artifact makes the handshake immune to agent-side
+     * message/belief ordering, which previously left children stuck in a
+     * 'Busy - Listening' state and hung the simulation.
+     */
+    private static HashMap<String, Integer> utteranceBatchesProcessed = new HashMap<>();
+
+    // Called by a child agent each time it finishes processing one batch of
+    // utterances.
+    @OPERATION
+    public void utteranceBatchProcessed() {
+        String childName = getCurrentOpAgentId().getAgentName();
+        utteranceBatchesProcessed.merge(childName, 1, Integer::sum);
+    }
+
+    // Called by a parent agent after it has sent all of the day's utterance
+    // batches.  Blocks until the named child has processed that many batches.
+    @OPERATION
+    public void awaitChildHeardAll(String childName, int batchesSent) {
+        // After the final year there is nothing left to coordinate; return
+        // immediately so a stray late home phase cannot park a workspace
+        // thread (see finishedHome above).
+        if (simulationEnding)
+            return;
+        await("childHeardAll", childName, batchesSent);
+        // Consume this day's acknowledgements so tomorrow starts from zero.
+        utteranceBatchesProcessed.merge(childName, -batchesSent, Integer::sum);
+    }
+
+    @GUARD
+    boolean childHeardAll(String childName, int batchesSent) {
+        return utteranceBatchesProcessed.getOrDefault(childName, 0) >= batchesSent;
     }
 
     /*

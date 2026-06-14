@@ -1,84 +1,78 @@
-// This file contains starting beliefs and plans which are common to all child
-// agents.
-
-// Include all beliefs, goals & plans common to all agents
 { include("inc/common.asl") }
 
-/***************************
- * Initial beliefs & goals *
- ***************************/
 words::unique_seen(0).
 words::unique_heard(0).
 words::unique_encountered(0).
 
-/*****************
- * Initial plans *
- *****************/
-
-// Elsewhere, a check is made to see if a word is present in the
-// belief base.  The 1st time that check is made for a given word, this plan
-// will be executed (as the word isn't in the belief base).
-// This plan creates the starting belief about the given word.
 +?words::word(Word,[Seen,Heard,AgeLearned])<-
     Seen=0; Heard=0; AgeLearned=0;
     +words::word(Word,[Seen,Heard,AgeLearned]);
     .
 
-// Setting the agents 'state' is done regularly, so this is a dedicated plan
-// to handle settings the state.
 +!setState(State)<-
     -activityState(_);
     +activityState(State);
     .
 
-// The custom launcher tells the 'parent' agents to create groups representing
-// homes/family units, and tells this child agent which one to join, to play
-// the role of 'offspring'.
 +!join_home_group(HomeGroup)<-
     .wait(group(village,village,VillageGroupID));
     .wait(subgroups(Homes)[artifact_id(VillageGroupID)]);
     .wait(group(HomeGroup,indv_home,GroupID));
-    // The above lines ensure that the homegroup we have been told to join does
-    // exist before we attempt to join it.
     home::focus(GroupID);
     home::adoptRole(offspring)[artifact_name(HomeGroup),wsp(learning_environ)];
     .
 
-// The custom launcher gives this child agent the goal of 'join_school'.
-// There probably is a way to apply the 'school' namespace to this using Java
-// or Moise, but this works AND allows for the possibility of coding a child
-// agent to be truant.
 +!join_school<-
-    //.print("Trying to join the 'classroom'...");
     .wait(group(Class,classroom,ClassID));
-    //.print("Found the classroom. Yay???");
     school::focus(ClassID);
     school::adoptRole(student)[artifact_name(Class),wsp(learning_environ)];
     .
 
-// The synchroniser artefact 'signals' the end of each year (by raising the
-// 'newYear' signal).  This causes all agents focusing on that artefact to gain
-// this belief.  By being atomic, and having the '.wait' statement, we ensure
-// both that nothing else is attempted while running this plan AND that the
-// agent has actually finished processing all words seen or heard.
-@[atomic]
-+sync::newYear<-
-    .wait(activityState("Idle"));
+// If the household never told us its profile names (e.g. configurations
+// without profile sections), fall back to the defaults.
++?home::env_profile(ParentProfile,HomeProfile)<-
+    ParentProfile = "standard";
+    HomeProfile = "no_books";
+    .
+
+// Record this year's statistics with the DataLogger artifact.
+// Argument order MUST match DataLogger.addAnnualStats(String agentName,
+// String profile, String parentProfile, String homeProfile,
+// String ses, int age, int uniqueSeen, int uniqueHeard,
+// int uniqueEncountered, int learned).
+// 'unique_encountered' counts word types the child has been exposed to at
+// least once (the paper's Table 6 exposure metric); the learned count only
+// includes words that passed the learning threshold.  They are deliberately
+// separate columns.
++!record_annual_stats<-
     .my_name(Me);
     ?age(Age);
+    ?profile(Profile);
+    ?home::env_profile(ParentProfile,HomeProfile);
     ?home::ses(Ses,_);
     ?words::unique_seen(WordsSeenCount);
     ?words::unique_heard(WordsHeardCount);
     ?words::unique_encountered(WordsEncounteredCount);
     .count(words::word(_,[_,_,SomeAge]) & SomeAge\==0,WordsLearntCount);
-    addAnnualStats(Me,Ses,Age,WordsSeenCount,WordsHeardCount,WordsEncounteredCount,WordsLearntCount);
+    addAnnualStats(Me,Profile,ParentProfile,HomeProfile,Ses,Age,WordsSeenCount,WordsHeardCount,WordsEncounteredCount,WordsLearntCount);
     .
 
-// A little back-and-forth plan to get the synchroniser to wait until all child
-// agents have finished everything.
-@[atomic]
-+sync::finalise<-
+// Signalled at the end of every year except the last.
++sync::newYear<-
     .wait(activityState("Idle"));
+    !record_annual_stats;
+    .
+
+// Signalled at the end of the final year, instead of newYear.  The final
+// year's stats are recorded here, before childAgentFinalised, so they are
+// guaranteed to be in the DataLogger before it writes the CSV files.
+// The 'not finalised' guard (with the belief added before anything else)
+// makes this idempotent: a duplicated finalise signal must not record the
+// stats twice or double-count this child in the synchroniser.
++sync::finalise : not finalised <-
+    +finalised;
+    .wait(activityState("Idle"));
+    !record_annual_stats;
     .my_name(Me);
     ?home::ses(Ses,_);
     .findall(aoa(Word,Age),words::word(Word,[_,_,Age]) & Age\==0,WordAoA);
@@ -86,15 +80,11 @@ words::unique_encountered(0).
     childAgentFinalised;
     .
 
-// The synchroniser altered it's 'agent_age()' Observable Property, and this
-// agent noticed
 @[atomic]
 +sync::agent_age(NewAge)<-
-    // Make sure there's nothing else happening
     .wait(activityState("Idle"));
     !setState("Busy - Observed a change in the Synchroniser's state");
     ?age(Age);
-    // See if the synchroniser has actually changed the age.
     if(NewAge\==Age){
         -age(_);
         +age(NewAge);

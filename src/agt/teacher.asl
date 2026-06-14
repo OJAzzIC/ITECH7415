@@ -11,16 +11,26 @@ students_found(0).
 
 +!find_my_students<-
     .wait(sync::status("Ready"));
+    !find_students_loop;
+    .
+
++!find_students_loop<-
     .findall(Student,play(Student,student,_),StudentList);
     .length(StudentList,NumStudents);
-    +my_students(StudentList);
-    -students_found(_);
-    +students_found(NumStudents);
-    .my_name(Me);
-    for(.member(Student,StudentList)){
-        .send(Student,tell,school::my_teacher(Me));
-    };
-    sync::schoolReady;
+    .print("[TEACHER] find_students_loop: found ", NumStudents, " students");
+    if(NumStudents==0){
+        .wait(200);
+        !find_students_loop;
+    }else{
+        +my_students(StudentList);
+        -students_found(_);
+        +students_found(NumStudents);
+        .my_name(Me);
+        for(.member(Student,StudentList)){
+            .send(Student,tell,school::my_teacher(Me));
+        };
+        sync::schoolReady;
+    }
     .
 
 @[atomic]
@@ -103,4 +113,7 @@ students_found(0).
 
 +sync::status("StartSchool")<-
     resetGoal(read_books);
+    .
++sync::newYear<-
+    !read_books;
     .

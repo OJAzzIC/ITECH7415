@@ -2,8 +2,13 @@
 bin/
 build/
 
-# Ignore our dataset
+# Ignore our dataset (not distributed - licensing). The corpus actually
+# lives in resources/ at the project root; src/resources/ is the legacy path.
+resources/
 src/resources/
+
+# Ignore the research paper PDF (copyright)
+*.pdf
 
 # Ignore the csv's produced with each successful run
 /*.csv
