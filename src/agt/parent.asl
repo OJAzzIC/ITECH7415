@@ -28,6 +28,17 @@
     .send(Residents,tell,home::house_parents(Parents));
     ?home::ses(Ses,Qty);
     .send(Residents,tell,home::ses(Ses,Qty));
+    // Share this household's profile settings with every member (the child
+    // needs the profile names for its results row; a second parent needs
+    // the pool/factor/books settings to speak correctly).
+    ?home::env_profile(ParentProfile,HomeProfile);
+    .send(Residents,tell,home::env_profile(ParentProfile,HomeProfile));
+    ?home::pool(Pool);
+    .send(Residents,tell,home::pool(Pool));
+    ?home::words_factor(Factor);
+    .send(Residents,tell,home::words_factor(Factor));
+    ?home::books_per_day(NBooks);
+    .send(Residents,tell,home::books_per_day(NBooks));
     sync::groupCreated(GroupName);
     .
 
@@ -70,30 +81,52 @@
     ?home::house_parents(Parents);
     ?home::play(Child,offspring,_);
     ?home::ses(_,UtteranceQty);
+    ?home::pool(Pool);
+    ?home::words_factor(Factor);
+    ?home::books_per_day(NBooks);
     // See how many parents are in the 'home'
     .length(Parents,Length);
-    // Divide the daily utterance word count by the number of parents, to 
+    // Divide the daily utterance word count by the number of parents, to
     // determine how many words this agent needs to 'speak' to the child.
-    WordsToSpeak=UtteranceQty/Length;
+    // The parent profile's daily_words_factor scales the SES budget.
+    WordsToSpeak=UtteranceQty*Factor/Length;
     // Create a counter to track how many words are remaining to be 'spoken'
     +home::words_to_speak(WordsToSpeak);
     +home::iterationsLeft(20);
     while(home::iterationsLeft(Counter) & Counter>0 & home::words_to_speak(RemainingWords) & RemainingWords>0){
         DesiredWords=RemainingWords/Counter;
-        getBulkUtterances(DesiredWords,Utterances,NumWordsReceived);
+        getBulkUtterances(Pool,DesiredWords,Utterances,NumWordsReceived);
         .send(Child,tell,listen_to_utterances(Utterances,Counter));
         -home::words_to_speak(_);
         +home::words_to_speak(RemainingWords-NumWordsReceived);
         -home::iterationsLeft(_);
         +home::iterationsLeft(Counter-1);
     };
+    // The loop may finish in fewer than 20 iterations (the word budget can
+    // run out early), so work out how many batches were actually sent.
+    ?home::iterationsLeft(IterationsRemaining);
+    BatchesSent = 20-IterationsRemaining;
     // Remove the counters
     -home::words_to_speak(_);
     -home::iterationsLeft(_);
-    .
-
-+finishedUtterances[source(Child)]<-
-    -finishedUtterances[source(Child)];
-    // Tell the synchroniser that this agent has completed the task.
+    // Home reading: read the configured number of randomly chosen books
+    // aloud to the child.  Each book counts as one more 'batch' in the
+    // day-end handshake below.
+    if(NBooks>0){
+        for(.range(I,1,NBooks)){
+            get_bookTitleRandomly(Title);
+            get_bookByTitle(Title,Text);
+            .send(Child,tell,listen_to_home_book(Text));
+        };
+    };
+    // Block (inside the synchroniser artifact) until the child has reported
+    // processing every batch that was sent.  Counting inside the artifact is
+    // immune to agent-side message/belief ordering; the previous design had
+    // the child count batches against a fixed total of 20, which hung the
+    // simulation whenever batches and the day's end arrived out of step.
+    sync::awaitChildHeardAll(Child,BatchesSent+NBooks);
+    // The child has definitely heard everything for today: tell it the day
+    // is over (so it can go idle) and tell the synchroniser we're done.
+    .send(Child,tell,day_done);
     sync::finishedHome;
     .

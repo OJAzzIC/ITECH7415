@@ -62,6 +62,9 @@ task run (type: JavaExec, dependsOn: 'classes') {
     // mainClass = 'jacamo.infra.JaCaMoLauncher'
     mainClass = 'vocab.VocabLauncher'
     args 'child_vocabulary_acquisition.jcm'
+    // Select a different configuration file with -Pconf, e.g.:
+    //   ./gradlew run -Pconf=scenarios/mixed_children.conf
+    systemProperty 'simulation.conf', (project.hasProperty('conf') ? project.property('conf') : 'simulation.conf')
     // jvmArgs '-Xss15m'
     classpath sourceSets.main.runtimeClasspath
 }

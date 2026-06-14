@@ -1,6 +1,8 @@
 package vocab;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -21,7 +23,7 @@ public class ConfigFile {
     private static final int AGE_START_MAX = 5;
 
     private static final int AGE_FINISH_DEFAULT = 8;
-    private static final int AGE_FINISH_MIN = 5;
+    private static final int AGE_FINISH_MIN = 0;
     private static final int AGE_FINISH_MAX = 10;
 
     private static final double PER_SINGLE_PARENTS_DEFAULT = 100;
@@ -31,6 +33,14 @@ public class ConfigFile {
     Agents agents;
     HashSet<SES> ses = new HashSet<>();
     Environment environment;
+    ArrayList<ChildProfile> childProfiles = new ArrayList<>();
+    ArrayList<ParentProfile> parentProfiles = new ArrayList<>();
+    ArrayList<HomeProfile> homeProfiles = new ArrayList<>();
+    // pool name -> directory of utterance CSV files
+    HashMap<String, String> utterancePools = new HashMap<>();
+    int daysPerYear = DAYS_PER_YEAR_DEFAULT;
+
+    private static final int DAYS_PER_YEAR_DEFAULT = 365;
 
     private ConfigFile() {
     }
@@ -48,7 +58,36 @@ public class ConfigFile {
         output.agents = new Agents(CHILD_AGENT_DEFAULT, MAX_SIBLINGS_DEFAULT, PER_SINGLE_PARENTS_DEFAULT,
                 AGE_START_DEFAULT, AGE_FINISH_DEFAULT);
         output.ses = SES.defaults();
+        output.environment = new Environment("./resources/utterances", "./resources/books");
+        output.applyProfileDefaults();
         return output;
+    }
+
+    /*
+     * Fill in default profiles/pools for anything the config file did not
+     * define, so the rest of the system can always assume at least one of
+     * each exists.  With no profile sections in the file, the simulation
+     * behaves exactly as the original (pre-profile) model.
+     */
+    private void applyProfileDefaults() {
+        if (childProfiles.isEmpty())
+            childProfiles.add(ChildProfile.typical(agents.getChild()));
+        if (parentProfiles.isEmpty())
+            parentProfiles.add(ParentProfile.standard());
+        if (homeProfiles.isEmpty())
+            homeProfiles.add(HomeProfile.noBooks());
+        // The 'default' pool always points at the main utterance directory.
+        utterancePools.put("default", environment.utteranceLocation());
+        // If child profiles are defined, the total child count is the sum of
+        // their counts (overriding agents.child, which then only acts as the
+        // fallback when no profiles are given).
+        int total = childProfiles.stream().mapToInt(ChildProfile::count).sum();
+        if (total != agents.getChild()) {
+            System.out.println("Child profiles define " + total
+                    + " children in total; overriding agents.child=" + agents.getChild() + ".");
+            agents = new Agents(total, agents.getMaxSiblings(), agents.getPercentSingleParents(),
+                    agents.getAgeStart(), agents.getAgeFinish());
+        }
     }
 
     /*
@@ -86,9 +125,10 @@ public class ConfigFile {
         age_finish = clamp_int_to_range(AGE_FINISH_MIN,
                 configurationFile.getIntOrElse("agents.age_finish", AGE_FINISH_DEFAULT),
                 AGE_FINISH_MAX);
-        // 'age_finish' must be greater than 'age_start'
-        if (age_finish == age_start)
-            ++age_finish;
+        // 'age_finish' must not be less than 'age_start'.
+        // age_finish == age_start is valid and simulates a single year.
+        if (age_finish < age_start)
+            age_finish = age_start;
         // Repeat process for 'percent_single_parents' key as well.
         percent_single_parents = clamp_double_to_range(PER_SINGLE_PARENTS_MIN,
                 configurationFile.getOrElse("agents.percent_single_parents", PER_SINGLE_PARENTS_DEFAULT),
@@ -135,6 +175,82 @@ public class ConfigFile {
             bookLocation = "./resources/books";
         }
         output.environment = new Environment(utteranceLocation, bookLocation);
+
+        // Optional: days per simulated year (default 365).  Mainly useful
+        // for quick smoke-test runs while developing scenarios.
+        output.daysPerYear = clamp_int_to_range(1,
+                configurationFile.getIntOrElse("agents.days_per_year", DAYS_PER_YEAR_DEFAULT),
+                366);
+
+        // Try to parse the '[[child_profile]]' array, if present.
+        List<StampedConfig> childProfilesInFile = configurationFile.get("child_profile");
+        if (childProfilesInFile != null) {
+            for (StampedConfig p : childProfilesInFile) {
+                if (!p.contains("name")) {
+                    System.out.println("Skipped a [[child_profile]] entry with no 'name'.");
+                    continue;
+                }
+                String name = p.get("name");
+                int count = p.getIntOrElse("count", 1);
+                double attHeard = clamp_double_to_range(0.0,
+                        p.getOrElse("attentiveness_heard",
+                                p.getOrElse("attentiveness", ChildProfile.ATTENTIVENESS_DEFAULT)),
+                        1.0);
+                double attSeen = clamp_double_to_range(0.0,
+                        p.getOrElse("attentiveness_seen",
+                                p.getOrElse("attentiveness", ChildProfile.ATTENTIVENESS_DEFAULT)),
+                        1.0);
+                int tSeen = p.getIntOrElse("threshold_seen", ChildProfile.THRESHOLD_SEEN_DEFAULT);
+                int tHeard = p.getIntOrElse("threshold_heard", ChildProfile.THRESHOLD_HEARD_DEFAULT);
+                int tBoth = p.getIntOrElse("threshold_both", ChildProfile.THRESHOLD_BOTH_DEFAULT);
+                output.childProfiles.add(
+                        new ChildProfile(name, count, attHeard, attSeen, tSeen, tHeard, tBoth));
+            }
+        }
+
+        // Try to parse the '[[parent_profile]]' array, if present.
+        List<StampedConfig> parentProfilesInFile = configurationFile.get("parent_profile");
+        if (parentProfilesInFile != null) {
+            for (StampedConfig p : parentProfilesInFile) {
+                if (!p.contains("name")) {
+                    System.out.println("Skipped a [[parent_profile]] entry with no 'name'.");
+                    continue;
+                }
+                String name = p.get("name");
+                String pool = p.getOrElse("pool", "default");
+                double factor = clamp_double_to_range(0.0,
+                        p.getOrElse("daily_words_factor", 1.0), 2.0);
+                output.parentProfiles.add(new ParentProfile(name, pool, factor));
+            }
+        }
+
+        // Try to parse the '[[home_profile]]' array, if present.
+        List<StampedConfig> homeProfilesInFile = configurationFile.get("home_profile");
+        if (homeProfilesInFile != null) {
+            for (StampedConfig p : homeProfilesInFile) {
+                if (!p.contains("name")) {
+                    System.out.println("Skipped a [[home_profile]] entry with no 'name'.");
+                    continue;
+                }
+                String name = p.get("name");
+                int books = clamp_int_to_range(0, p.getIntOrElse("books_per_day", 0), 10);
+                output.homeProfiles.add(new HomeProfile(name, books));
+            }
+        }
+
+        // Try to parse the '[[utterance_pool]]' array, if present.
+        List<StampedConfig> poolsInFile = configurationFile.get("utterance_pool");
+        if (poolsInFile != null) {
+            for (StampedConfig p : poolsInFile) {
+                if (p.contains("name") && p.contains("path")) {
+                    output.utterancePools.put(p.get("name"), p.get("path"));
+                } else {
+                    System.out.println("Skipped a malformed [[utterance_pool]] entry (needs 'name' and 'path').");
+                }
+            }
+        }
+
+        output.applyProfileDefaults();
         return output;
     }
 
@@ -156,10 +272,31 @@ public class ConfigFile {
         sb.append("   percent_single_parents = " + agents.getPercentSingleParents() + "\n");
         sb.append("   age_start = " + agents.getAgeStart() + "\n");
         sb.append("   age_finish = " + agents.getAgeFinish() + "\n");
+        sb.append("   days_per_year = " + daysPerYear + "\n");
         for (SES s : ses) {
             sb.append("[[ses]]\n");
             sb.append("   name = " + s.getName() + "\n");
             sb.append("   qty = " + s.getQty() + "\n");
+        }
+        for (ChildProfile p : childProfiles) {
+            sb.append("[[child_profile]]\n");
+            sb.append("   name = " + p.name() + ", count = " + p.count()
+                    + ", attentiveness(heard/seen) = " + p.attentivenessHeard() + "/" + p.attentivenessSeen()
+                    + ", thresholds(seen/heard/both) = " + p.thresholdSeen() + "/" + p.thresholdHeard()
+                    + "/" + p.thresholdBoth() + "\n");
+        }
+        for (ParentProfile p : parentProfiles) {
+            sb.append("[[parent_profile]]\n");
+            sb.append("   name = " + p.name() + ", pool = " + p.pool()
+                    + ", daily_words_factor = " + p.dailyWordsFactor() + "\n");
+        }
+        for (HomeProfile p : homeProfiles) {
+            sb.append("[[home_profile]]\n");
+            sb.append("   name = " + p.name() + ", books_per_day = " + p.booksPerDay() + "\n");
+        }
+        for (var pool : utterancePools.entrySet()) {
+            sb.append("[[utterance_pool]]\n");
+            sb.append("   name = " + pool.getKey() + ", path = " + pool.getValue() + "\n");
         }
         return sb.toString();
     }
