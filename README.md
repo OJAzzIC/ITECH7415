@@ -266,6 +266,71 @@ A **scenario is just a configuration file**. Keep one file per experimental cond
 | `scenarios/esl_home_books.conf` | ESL parents (restricted-vocabulary utterance pool) crossed with home environments of 0, 1 and 3 books per day. |
 | `scenarios/smoke_test.conf` | Every feature at once in a 5-day run, for verifying the machinery (~1 minute). Not for results. |
 
+### Common Customisations (Recipes)
+
+The three levers — **child profiles**, **parent profiles + utterance pools**, and **home profiles** — cover the most common questions. Each recipe below is a block you paste into a scenario `.conf` file; none requires changing any code.
+
+#### 1. Children who don't pay attention (ignore some words)
+
+`attentiveness` is the probability the child actually processes any word it is exposed to — `1.0` attends to everything (the original behaviour), `0.5` ignores roughly half. It applies in the classroom (teacher reading) **and** at home.
+
+```toml
+[[child_profile]]
+name = "typical"
+count = 3
+attentiveness = 1.0
+
+[[child_profile]]
+name = "inattentive"
+count = 3
+attentiveness = 0.5        # ignores ~50% of the words it hears or sees
+```
+
+For finer control, set the channels separately with `attentiveness_heard` (spoken words) and `attentiveness_seen` (read words), and change how many repetitions a word needs to be learnt with `threshold_heard` / `threshold_seen` / `threshold_both` (defaults 20 / 20 / 12). See `scenarios/autism_demo.conf`.
+
+> **Note:** attentiveness is per *channel* (heard vs seen), not per *location*. An inattentive child therefore ignores words everywhere, not only in the classroom. Location-specific attentiveness would be a small code extension.
+
+#### 2. Different numbers of books read at home
+
+`books_per_day` is how many books a parent reads aloud at home each day (`0` = no reading at home, the baseline). Home profiles are assigned to households in file order.
+
+```toml
+[[home_profile]]
+name = "no_books"
+books_per_day = 0
+
+[[home_profile]]
+name = "one_book"
+books_per_day = 1
+
+[[home_profile]]
+name = "three_books"
+books_per_day = 3
+```
+
+#### 3. Different household types (language / vocabulary at home)
+
+Model a home that speaks a different or narrower vocabulary (e.g. English as a second language) by pointing a **parent profile** at a separate **utterance pool** — its own corpus directory.
+
+```toml
+# 1. Declare the corpus directory (must contain *utterances*.csv files)
+[[utterance_pool]]
+name = "esl"
+path = "./resources/utterances_esl"
+
+# 2. Create parent types that draw from different pools
+[[parent_profile]]
+name = "standard"
+pool = "default"             # the main [environment.locations] corpus
+
+[[parent_profile]]
+name = "esl_parent"
+pool = "esl"
+daily_words_factor = 0.9     # optional: scales the SES daily word budget (0-2)
+```
+
+To use a real corpus, download a [CHILDES](https://talkbank.org/childes/) set, place the files in a new folder, run `python3 prepare_data.py` to convert them, and set `path` to that folder. Combine this with the home profiles above to vary *both* what a household says and whether it reads. See `scenarios/esl_home_books.conf`.
+
 ### Building Your Own Scenario
 
 1. **Copy** `scenarios/baseline.conf` to a new file and change *only* the condition under study — one variable per scenario keeps results interpretable.
