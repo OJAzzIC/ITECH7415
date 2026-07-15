@@ -21,3 +21,8 @@ src/resources/
 .gradle/
 # Contents are only relevent to the specific machine which created them
 .vscode/
+
+# Course documents & auto-generated JaCaMo scaffolding - not part of the tool
+*.pptx
+/asl/
+/templates/
