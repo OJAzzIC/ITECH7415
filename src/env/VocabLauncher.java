@@ -29,6 +29,22 @@ public class VocabLauncher extends JaCaMoLauncher {
     private JaCaMoProject jaCaMoProject;
 
     /*
+     * The three JaCaMo debug web inspectors (Jason mind inspector :3272,
+     * Moise organisation :3271, CArtAgO environment :3273) are debugging
+     * tools, not runtime services: browsing an agent's mind mid-run makes
+     * Jason serialise that agent's entire belief base every reasoning cycle
+     * (and can throw ConcurrentModificationException), and the Moise page
+     * renders its org chart through graphviz-java, whose server engine can
+     * wedge HTTP handler threads on 30s socket timeouts. Long runs polled
+     * through these servers have deadlocked mid-year. Run with
+     * -Dvocab.inspectors=false (./gradlew run -Pinspectors=false) to not
+     * start any of them.
+     */
+    private static boolean inspectorsEnabled() {
+        return !"false".equalsIgnoreCase(System.getProperty("vocab.inspectors", "true"));
+    }
+
+    /*
      * A direct copy/paste from JaCaMoLauncher class, with the only change being
      * that a VocabLauncher object is created rather than a JaCaMoLauncher object
      */
@@ -52,7 +68,14 @@ public class VocabLauncher extends JaCaMoLauncher {
         r.init(args);
         r.registerMBean();
         r.registerInRMI();
-        r.registerWebMindInspector();
+        if (inspectorsEnabled()) {
+            r.registerWebMindInspector();
+        } else {
+            // GroupBoard/SchemeBoard/NormativeBoard all check this property
+            // before registering with the Moise WebInterface (:3271).
+            Config.get().setProperty("startWebOrgInspector", "false");
+            logger.info("Debug web inspectors disabled (vocab.inspectors=false).");
+        }
         r.create();
         r.start();
         r.waitEnd();
@@ -96,7 +119,12 @@ public class VocabLauncher extends JaCaMoLauncher {
         if (!einsp) {
             p = new EnvironmentWebInspector();
             try {
-                p.init(null);
+                // The platform itself is mandatory (JaCaMo calls
+                // EnvironmentWebInspector.get().registerWorkspace() on every
+                // workspace creation and NPEs if the singleton is unset);
+                // init("false") registers it without starting the :3273
+                // HTTP server.
+                p.init(inspectorsEnabled() ? null : new String[] { "false" });
             } catch (Exception e) {
                 e.printStackTrace();
             }

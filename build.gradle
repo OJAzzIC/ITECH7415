@@ -65,6 +65,9 @@ task run (type: JavaExec, dependsOn: 'classes') {
     // Select a different configuration file with -Pconf, e.g.:
     //   ./gradlew run -Pconf=scenarios/mixed_children.conf
     systemProperty 'simulation.conf', (project.hasProperty('conf') ? project.property('conf') : 'simulation.conf')
+    // Disable the debug web inspectors (:3271/:3272/:3273) with -Pinspectors=false
+    // (headless runs; see VocabLauncher.inspectorsEnabled for why).
+    systemProperty 'vocab.inspectors', (project.hasProperty('inspectors') ? project.property('inspectors') : 'true')
     // jvmArgs '-Xss15m'
     classpath sourceSets.main.runtimeClasspath
 }
